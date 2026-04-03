@@ -62,7 +62,8 @@ def _game_active_for_team(
     if status == "post":
         return False
     if status == "in":
-        return True
+        # Trust live status, but cap at 8 h from game_time to guard against stale cache
+        return now_aware <= gt + timedelta(hours=8)
     # pre / scheduled — route within pre-game window through end of typical broadcast
     window_start = gt - timedelta(minutes=pre_game_minutes)
     window_end = gt + timedelta(hours=12)
@@ -73,11 +74,26 @@ def _next_scheduled_game_for_team(
     games: list[dict[str, Any]],
     team_id: str,
 ) -> tuple[dict[str, Any] | None, bool]:
-    """Earliest non-post game involving team_id, by game_time. Returns (game, my_team_is_home)."""
+    """Earliest non-post game involving team_id, by game_time. Returns (game, my_team_is_home).
+
+    Uses a 6-hour lookback as a display-only heuristic: any game that started
+    more than 6 h ago is almost certainly over, even if the cached ESPN status
+    hasn't flipped to "post" yet.
+    """
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(hours=6)
     mine: list[tuple[dict[str, Any], bool]] = []
     for g in games:
         if str(g.get("status", "")).lower() == "post":
             continue
+        try:
+            gt = datetime.fromisoformat(str(g["game_time"]))
+            if gt.tzinfo is None:
+                gt = gt.replace(tzinfo=timezone.utc)
+            if gt < cutoff:
+                continue
+        except Exception:
+            pass
         hid, aid = str(g["home_team_id"]), str(g["away_team_id"])
         if hid == team_id:
             mine.append((g, True))

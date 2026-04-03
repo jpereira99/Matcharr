@@ -42,8 +42,9 @@ async def dashboard() -> DashboardOut:
                 SELECT 1 FROM team_channels tc
                 WHERE tc.league_profile_id = lp.id AND tc.enabled = 1
             )
-            AND sc.game_time > datetime('now', '-1 day')
-            ORDER BY sc.game_time
+            AND sc.status != 'post'
+            AND datetime(sc.game_time) >= datetime('now', '-6 hours')
+            ORDER BY datetime(sc.game_time)
             """
         )
         games_raw = await cur.fetchall()
