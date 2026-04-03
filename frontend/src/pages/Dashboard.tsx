@@ -107,8 +107,7 @@ function CachedGameCard({ g, highlighted, lookups }: { g: Record<string, unknown
 	const awayName = String(g.away_team ?? '');
 	const homeName = String(g.home_team ?? '');
 
-	const nameTracked = (name: string) =>
-		highlighted && tracked.some((t) => t.trim().toLowerCase() === name.trim().toLowerCase());
+	const nameTracked = (name: string) => highlighted && tracked.some((t) => t.trim().toLowerCase() === name.trim().toLowerCase());
 	const awayTracked = nameTracked(awayName);
 	const homeTracked = nameTracked(homeName);
 
@@ -573,22 +572,36 @@ export function DashboardPage() {
 							const tcId = s.team_channel_id as number | undefined;
 							const tc = tcId != null ? lookups.tcById.get(tcId) : undefined;
 							const profile = tc ? lookups.profileById.get(tc.league_profile_id) : undefined;
+							const fromName = String(s.from_stream_name ?? 'Empty Stream');
+							const toName = String(s.to_stream_name ?? 'Empty Stream');
 							return (
-								<div key={i} className='relative pb-5 last:pb-0'>
-									<span className='absolute -left-[31px] top-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-(--color-border) bg-(--color-surface)'>
+								<div key={i} className='relative pb-3.5 last:pb-0'>
+									<span className='absolute -left-[33px] top-1 flex h-4 w-4 items-center justify-center rounded-full border-2 border-(--color-border) bg-(--color-surface)'>
 										<span className='h-1.5 w-1.5 rounded-full bg-(--color-accent)' />
 									</span>
-									<div className='text-xs text-(--color-muted)'>{String(s.switched_at)}</div>
-									<div className='mt-1 flex items-center gap-2 text-sm'>
-										<TeamLogoFromChannel tc={tc} profile={profile} size={20} />
-										<span className='font-medium'>{String(s.team_name ?? '?')}</span>
+									<div className='flex min-w-0 items-start gap-2'>
+										<TeamLogoFromChannel tc={tc} profile={profile} size={18} />
+										<div className='min-w-0 flex-1'>
+											<div className='flex flex-wrap items-baseline gap-x-2 gap-y-0.5'>
+												<span className='text-[11px] tabular-nums text-(--color-muted)'>
+													{String(s.switched_at)}
+												</span>
+												<span className='text-xs font-medium'>{String(s.team_name ?? '?')}</span>
+											</div>
+											<div className='mt-0.5 flex min-w-0 items-center gap-1 font-mono text-[11px] leading-tight'>
+												<span className='min-w-0 truncate max-w-[300px] text-(--color-muted)' title={fromName}>
+													{fromName}
+												</span>
+												<ArrowRight className='h-3 w-3 shrink-0 text-(--color-accent)' />
+												<span className='min-w-0 truncate max-w-[300px] text-(--color-foreground)' title={toName}>
+													{toName}
+												</span>
+											</div>
+											<div className='mt-0.5 text-[11px] text-(--color-muted)' title={String(s.reason)}>
+												{String(s.reason)}
+											</div>
+										</div>
 									</div>
-									<div className='mt-1 flex items-center gap-1.5 font-mono text-xs'>
-										<span className='text-(--color-muted)'>{String(s.from_stream_name ?? '—')}</span>
-										<ArrowRight className='h-3 w-3 text-(--color-accent)' />
-										<span className='text-(--color-foreground)'>{String(s.to_stream_name ?? '—')}</span>
-									</div>
-									<div className='mt-0.5 text-xs text-(--color-muted)'>{String(s.reason)}</div>
 								</div>
 							);
 						})}
