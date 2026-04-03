@@ -1,0 +1,11 @@
+services:
+  matcharr:
+    build: .
+    container_name: matcharr
+    restart: unless-stopped
+    ports:
+      - "8400:8400"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - TZ=America/New_York

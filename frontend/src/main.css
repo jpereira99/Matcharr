@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --color-background: oklch(0.13 0.02 260);
+  --color-foreground: oklch(0.97 0.01 260);
+  --color-card: oklch(0.17 0.025 260);
+  --color-card-border: oklch(0.28 0.04 260);
+  --color-muted: oklch(0.65 0.02 260);
+  --color-accent: oklch(0.72 0.18 250);
+  --color-accent-foreground: oklch(0.13 0.02 260);
+  --color-sidebar: oklch(0.11 0.025 265);
+  --color-danger: oklch(0.62 0.22 25);
+  --color-success: oklch(0.72 0.16 155);
+}
+
+@layer base {
+  body {
+    @apply bg-[var(--color-background)] text-[var(--color-foreground)] font-sans;
+    background-image:
+      radial-gradient(ellipse 120% 80% at 50% -20%, oklch(0.35 0.12 270 / 0.35), transparent),
+      radial-gradient(ellipse 60% 40% at 100% 0%, oklch(0.3 0.08 300 / 0.2), transparent);
+    background-attachment: fixed;
+  }
+}
