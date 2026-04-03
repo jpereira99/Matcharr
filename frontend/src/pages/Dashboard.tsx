@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { api } from "@/lib/api";
+import { fmtDateTime, fmtDateTimeSec } from "@/lib/date";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Activity, ChevronDown, ChevronRight, Clock, Info, Radio, Route, Zap } from "lucide-react";
 import { useState } from "react";
@@ -46,7 +47,7 @@ function CachedGameCard({ g, highlighted }: { g: Record<string, unknown>; highli
         title="Game start (ISO/UTC from ESPN) and raw ESPN status state"
       >
         <span className="text-[var(--color-muted)]">Start </span>
-        {String(g.game_time ?? "—")}
+        {fmtDateTime(g.game_time as string | undefined) ?? "—"}
         <span className="text-[var(--color-muted)]"> · Status </span>
         {String(g.status ?? "—")}
       </div>
@@ -204,11 +205,11 @@ export function DashboardPage() {
             )}
           </div>
           <p className="mt-2 text-xs text-[var(--color-muted)]">
-            Next scan: {d.next_scan_at ?? "—"}
+            Next scan: {fmtDateTimeSec(d.next_scan_at) ?? "—"}
             <br />
-            Last scan: {(d.health?.last_scan_at as string | undefined) ?? "—"}
+            Last scan: {fmtDateTimeSec(d.health?.last_scan_at as string | undefined) ?? "—"}
             <br />
-            Last ESPN schedule refresh: {lastSched ?? "—"}
+            Last ESPN schedule refresh: {fmtDateTimeSec(lastSched) ?? "—"}
           </p>
         </Card>
       </div>
@@ -305,7 +306,7 @@ export function DashboardPage() {
                     <td className="py-2 pr-3 font-medium">{row.team_name}</td>
                     <td className="py-2 pr-3">{row.next_game ?? "—"}</td>
                     <td className="py-2 pr-3 font-mono text-xs text-[var(--color-muted)]">
-                      {row.game_time ?? "—"}
+                      {fmtDateTime(row.game_time) ?? "—"}
                     </td>
                     <td className="py-2 pr-3">
                       {row.status === "no_upcoming_game" || row.status === "pattern_error" || row.status === "dispatcharr_error" ? (
