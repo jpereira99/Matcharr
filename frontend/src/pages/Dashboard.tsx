@@ -193,8 +193,6 @@ export function DashboardPage() {
 
 	const d = q.data!;
 	const reachable = d.health?.dispatcharr_reachable as boolean | null | undefined;
-	const lastSched = (d.health?.last_schedule_refresh as string | undefined) ?? null;
-
 	return (
 		<div className='space-y-6'>
 			{/* Header */}
@@ -319,15 +317,17 @@ export function DashboardPage() {
 						<span className='text-xs font-semibold uppercase tracking-wide'>Scheduler</span>
 						<StatusDot status={d.health?.scheduler_running ? 'online' : 'warning'} className='ml-auto' />
 					</div>
-					<div className='mt-3'>
-						<Badge variant={d.health?.scheduler_running ? 'success' : 'muted'}>
-							{d.health?.scheduler_running ? 'Running' : 'Idle'}
-						</Badge>
-					</div>
-					<div className='mt-2 space-y-0.5 text-xs text-(--color-muted)'>
-						<div>Next: {fmtDateTimeSec(d.next_scan_at) ?? '—'}</div>
-						<div>Last: {fmtDateTimeSec(d.health?.last_scan_at as string | undefined) ?? '—'}</div>
-						<div>ESPN refresh: {fmtDateTimeSec(lastSched) ?? '—'}</div>
+					<div className='mt-3 grid grid-cols-1 gap-4 text-xs text-(--color-muted) sm:grid-cols-2 sm:gap-x-6'>
+						<div className='min-w-0 space-y-0.5'>
+							<div className='text-[10px] font-semibold uppercase tracking-wide'>Stream Matching</div>
+							<div>Next: {fmtDateTimeSec(d.next_scan_at) ?? '—'}</div>
+							<div>Last: {fmtDateTimeSec(d.health?.last_scan_at as string | undefined) ?? '—'}</div>
+						</div>
+						<div className='min-w-0 space-y-0.5'>
+							<div className='text-[10px] font-semibold uppercase tracking-wide'>ESPN Cache</div>
+							<div>Next: {fmtDateTimeSec(d.health?.next_schedule_refresh_at as string | undefined) ?? '—'}</div>
+							<div>Last: {fmtDateTimeSec(d.health?.last_schedule_refresh as string | undefined) ?? '—'}</div>
+						</div>
 					</div>
 				</Card>
 			</div>

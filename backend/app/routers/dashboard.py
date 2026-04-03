@@ -10,6 +10,7 @@ from fastapi import APIRouter
 from app.database import get_db, kv_get
 from app.models import DashboardOut, HealthOut
 from app.services.dispatcharr import DispatcharrClient
+from app.services.matcher import compute_next_espn_refresh_at
 from app.services.scheduler import get_scheduler_status
 from app.settings_store import load_settings
 
@@ -111,8 +112,15 @@ async def dashboard() -> DashboardOut:
         logs = [dict(x) for x in await cur.fetchall()]
 
         last_refresh = await kv_get(db, "last_schedule_refresh")
+        last_match_cycle = await kv_get(db, "last_match_cycle_at")
 
-    last_s, next_s, sched_running = get_scheduler_status()
+    next_s, sched_running = get_scheduler_status()
+    next_espn = compute_next_espn_refresh_at(
+        last_schedule_refresh_iso=last_refresh,
+        schedule_refresh_hours=settings.schedule_refresh_hours,
+        next_scan_iso=next_s,
+        scan_interval_minutes=settings.scan_interval_minutes,
+    )
     da_ok: bool | None = None
     if settings.dispatcharr_url and settings.dispatcharr_token:
         client = DispatcharrClient(settings.dispatcharr_url, settings.dispatcharr_token)
@@ -128,8 +136,9 @@ async def dashboard() -> DashboardOut:
         health={
             "dispatcharr_reachable": da_ok,
             "last_schedule_refresh": last_refresh,
+            "next_schedule_refresh_at": next_espn,
             "scheduler_running": sched_running,
-            "last_scan_at": last_s,
+            "last_scan_at": last_match_cycle,
         },
     )
 
@@ -140,7 +149,7 @@ async def health() -> HealthOut:
         await db.execute("SELECT 1")
         last_refresh = await kv_get(db, "last_schedule_refresh")
         settings = await load_settings(db)
-    _last_s, _next_s, sched_running = get_scheduler_status()
+    _next_s, sched_running = get_scheduler_status()
     da_ok: bool | None = None
     if settings.dispatcharr_url and settings.dispatcharr_token:
         client = DispatcharrClient(settings.dispatcharr_url, settings.dispatcharr_token)

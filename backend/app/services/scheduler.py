@@ -16,26 +16,24 @@ logger = logging.getLogger(__name__)
 
 scheduler = AsyncIOScheduler(timezone=timezone.utc)
 _next_scan_at: datetime | None = None
-_last_scan_at: datetime | None = None
 _scheduler_started = False
 
 
-def get_scheduler_status() -> tuple[str | None, str | None, bool]:
+def get_scheduler_status() -> tuple[str | None, bool]:
+    """Next scheduled match cycle time (ISO) and whether the APScheduler is running."""
     return (
-        _last_scan_at.isoformat() if _last_scan_at else None,
         _next_scan_at.isoformat() if _next_scan_at else None,
         _scheduler_started,
     )
 
 
 async def _run_job() -> None:
-    global _last_scan_at, _next_scan_at
+    global _next_scan_at
     from app.database import get_db
     from app.services.matcher import run_match_cycle
 
     async with get_db() as db:
         result = await run_match_cycle(db)
-    _last_scan_at = datetime.now(timezone.utc)
     logger.info("Match cycle: %s", result.get("message"))
     job = scheduler.get_job("match_cycle")
     nrt = getattr(job, "next_run_time", None) if job else None
