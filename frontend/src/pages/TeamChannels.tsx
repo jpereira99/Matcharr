@@ -1,4 +1,5 @@
 import { AliasesFieldHelp } from "@/components/PatternPlaceholderHelp";
+import { LeagueBadge } from "@/components/LeagueBadge";
 import { TeamLogo } from "@/components/TeamLogo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,6 @@ import { Tabs } from "@/components/ui/tabs";
 import { Toggle } from "@/components/ui/toggle";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { api } from "@/lib/api";
-import { sportForLeague } from "@/lib/espnLogos";
 import type { EspnTeam, LeagueProfile, TeamChannel } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link2, Pencil, Plus, Search, Trash2, Users } from "lucide-react";
@@ -254,7 +254,7 @@ export function TeamChannelsPage() {
     <div className="space-y-6">
       <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight font-heading">
+          <h1 className="text-2xl font-extrabold tracking-tight font-heading">
             Team Channels
           </h1>
           <p className="mt-1 text-sm text-(--color-muted)">
@@ -294,7 +294,7 @@ export function TeamChannelsPage() {
       {/* Create panel */}
       {showCreate && (
         <Card>
-          <h3 className="text-base font-semibold font-heading">Add Team Mapping</h3>
+          <h3 className="text-base font-extrabold font-heading">Add Team Mapping</h3>
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <div>
               <Label>League Profile</Label>
@@ -314,23 +314,34 @@ export function TeamChannelsPage() {
             </div>
             <div>
               <Label>ESPN Team</Label>
-              <select
-                className="w-full rounded-(--radius-md) border border-(--color-border) bg-(--color-surface) px-3 py-2 text-sm text-(--color-foreground)"
-                value={form.espn_team_id}
-                onChange={(e) => {
-                  const team = espnTeamsQ.data?.find(
-                    (t) => t.id === e.target.value,
-                  );
-                  if (team) selectTeam(team, setForm);
-                }}
-              >
-                <option value="">Select a team...</option>
-                {espnTeamsQ.data?.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name} ({t.abbreviation})
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center gap-2">
+                {form.espn_team_id && selectedProfile && (
+                  <TeamLogo
+                    league={selectedProfile.espn_league}
+                    abbreviation={form.espn_team_abbr}
+                    espnTeamId={form.espn_team_id}
+                    teamName={form.team_name}
+                    size={32}
+                  />
+                )}
+                <select
+                  className="w-full rounded-(--radius-md) border border-(--color-border) bg-(--color-surface) px-3 py-2 text-sm text-(--color-foreground)"
+                  value={form.espn_team_id}
+                  onChange={(e) => {
+                    const team = espnTeamsQ.data?.find(
+                      (t) => t.id === e.target.value,
+                    );
+                    if (team) selectTeam(team, setForm);
+                  }}
+                >
+                  <option value="">Select a team...</option>
+                  {espnTeamsQ.data?.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} ({t.abbreviation})
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div>
               <Label>Dispatcharr Channel</Label>
@@ -425,9 +436,6 @@ export function TeamChannelsPage() {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filtered.map((tc) => {
             const profile = profileMap.get(tc.league_profile_id);
-            const sport = profile
-              ? sportForLeague(profile.espn_league)
-              : "";
             return (
               <Card
                 key={tc.id}
@@ -436,8 +444,9 @@ export function TeamChannelsPage() {
               >
                 <div className="flex items-start gap-3">
                   <TeamLogo
-                    sport={sport}
+                    league={profile?.espn_league ?? ""}
                     abbreviation={tc.espn_team_abbr}
+                    espnTeamId={tc.espn_team_id}
                     teamName={tc.team_name}
                     size={40}
                   />
@@ -451,9 +460,12 @@ export function TeamChannelsPage() {
                       />
                     </div>
                     {profile && (
-                      <p className="text-xs text-(--color-muted)">
-                        {profile.name}
-                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <LeagueBadge league={profile.espn_league} size={14} />
+                        <p className="text-xs text-(--color-muted)">
+                          {profile.name}
+                        </p>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -542,23 +554,34 @@ export function TeamChannelsPage() {
           </div>
           <div>
             <Label>ESPN Team</Label>
-            <select
-              className="w-full rounded-(--radius-md) border border-(--color-border) bg-(--color-surface) px-3 py-2 text-sm text-(--color-foreground)"
-              value={editForm.espn_team_id}
-              onChange={(e) => {
-                const team = editEspnTeamsQ.data?.find(
-                  (t) => t.id === e.target.value,
-                );
-                if (team) selectTeam(team, setEditForm);
-              }}
-            >
-              <option value="">Select a team...</option>
-              {editEspnTeamsQ.data?.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name} ({t.abbreviation})
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center gap-2">
+              {editForm.espn_team_id && editProfile && (
+                <TeamLogo
+                  league={editProfile.espn_league}
+                  abbreviation={editForm.espn_team_abbr}
+                  espnTeamId={editForm.espn_team_id}
+                  teamName={editForm.team_name}
+                  size={32}
+                />
+              )}
+              <select
+                className="w-full rounded-(--radius-md) border border-(--color-border) bg-(--color-surface) px-3 py-2 text-sm text-(--color-foreground)"
+                value={editForm.espn_team_id}
+                onChange={(e) => {
+                  const team = editEspnTeamsQ.data?.find(
+                    (t) => t.id === e.target.value,
+                  );
+                  if (team) selectTeam(team, setEditForm);
+                }}
+              >
+                <option value="">Select a team...</option>
+                {editEspnTeamsQ.data?.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} ({t.abbreviation})
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           <div>
             <Label>Dispatcharr Channel ID</Label>

@@ -1,11 +1,14 @@
 import { useTheme } from "@/hooks/useTheme";
 import { teamLogoUrl } from "@/lib/espnLogos";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type Props = {
-  sport: string;
+  /** ESPN league slug from the league profile (e.g. `mlb`, `usa.1`). */
+  league: string;
   abbreviation: string;
+  /** Required for soccer and NCAA; ESPN internal team id string. */
+  espnTeamId: string;
   teamName?: string;
   teamColor?: string;
   size?: number;
@@ -13,8 +16,9 @@ type Props = {
 };
 
 export function TeamLogo({
-  sport,
+  league,
   abbreviation,
+  espnTeamId,
   teamName,
   teamColor,
   size = 32,
@@ -22,7 +26,17 @@ export function TeamLogo({
 }: Props) {
   const { isDark } = useTheme();
   const [failed, setFailed] = useState(false);
-  const url = teamLogoUrl(sport, abbreviation, isDark);
+  /** If dark asset 404s, retry default (light) asset — ESPN serves light for all teams more reliably. */
+  const [preferLightAsset, setPreferLightAsset] = useState(false);
+  const urlLight = teamLogoUrl(league, abbreviation, espnTeamId, false);
+  const urlDark = teamLogoUrl(league, abbreviation, espnTeamId, true);
+  const url =
+    !isDark || preferLightAsset ? urlLight : urlDark;
+
+  useEffect(() => {
+    setFailed(false);
+    setPreferLightAsset(false);
+  }, [league, abbreviation, espnTeamId, isDark]);
 
   if (!url || failed) {
     const initials = (abbreviation || teamName || "?").slice(0, 3).toUpperCase();
@@ -53,7 +67,13 @@ export function TeamLogo({
       width={size}
       height={size}
       loading="lazy"
-      onError={() => setFailed(true)}
+      onError={() => {
+        if (isDark && !preferLightAsset && urlDark && urlLight && urlDark !== urlLight) {
+          setPreferLightAsset(true);
+        } else {
+          setFailed(true);
+        }
+      }}
       className={cn("shrink-0 object-contain", className)}
     />
   );

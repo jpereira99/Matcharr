@@ -1,38 +1,93 @@
 /**
- * Deterministic ESPN CDN URLs for team and league logos.
- * These don't require API calls — the URL pattern is stable.
+ * ESPN CDN URLs for team and league logos.
+ * Paths follow what ESPN serves (see team `logos[].href` from the public teams API).
  */
 
-export function teamLogoUrl(sport: string, abbr: string, dark = false): string {
-  if (!sport || !abbr) return "";
-  const base = `https://a.espncdn.com/i/teamlogos/${sport}/500`;
-  return `${dark ? `${base}-dark` : base}/${abbr.toLowerCase()}.png`;
-}
-
-export function leagueLogoUrl(league: string): string {
-  if (!league) return "";
-  return `https://a.espncdn.com/combiner/i?img=/i/leaguelogos/500/${league}.png&w=80&h=80&transparent=true`;
-}
+/** Pro / WNBA leagues: filename is lowercase team abbreviation. */
+const ABBR_LOGO_LEAGUES = new Set([
+  "mlb",
+  "nfl",
+  "nba",
+  "nhl",
+  "wnba",
+]);
 
 /**
- * Map from espn_league slug to a human-readable sport string for logo URLs.
- * ESPN uses the sport in logo paths, not the league.
+ * Maps `espn_league` (API league slug) → CDN folder under /i/teamlogos/{folder}/500/...
  */
-const LEAGUE_TO_SPORT: Record<string, string> = {
-  mlb: "baseball",
-  nfl: "football",
-  "college-football": "football",
-  nba: "basketball",
-  wnba: "basketball",
-  "mens-college-basketball": "basketball",
-  nhl: "hockey",
-  "mens-college-hockey": "hockey",
+const LEAGUE_TO_CDN_FOLDER: Record<string, string> = {
+  mlb: "mlb",
+  nfl: "nfl",
+  nba: "nba",
+  nhl: "nhl",
+  wnba: "wnba",
+  "college-football": "ncaa",
+  "mens-college-basketball": "ncaa",
+  "mens-college-hockey": "ncaa",
   "usa.1": "soccer",
   "eng.1": "soccer",
   "uefa.champions": "soccer",
   "usa.nwsl": "soccer",
 };
 
-export function sportForLeague(league: string): string {
-  return LEAGUE_TO_SPORT[league] ?? "";
+function normalizeLeagueSlug(league: string): string {
+  return league.trim().toLowerCase();
+}
+
+function cdnFolderForLeague(league: string): string {
+  return LEAGUE_TO_CDN_FOLDER[normalizeLeagueSlug(league)] ?? "";
+}
+
+/** True when the logo file is {espn_team_id}.png (soccer, NCAA), not abbreviation. */
+function logoUsesEspnTeamId(league: string): boolean {
+  return !ABBR_LOGO_LEAGUES.has(normalizeLeagueSlug(league));
+}
+
+/**
+ * Build team logo URL. For abbreviation leagues pass `espnTeamId` for consistency but only
+ * `abbreviation` is used; for soccer/NCAA, `espnTeamId` is required.
+ */
+export function teamLogoUrl(
+  league: string,
+  abbreviation: string,
+  espnTeamId: string,
+  dark = false,
+): string {
+  const folder = cdnFolderForLeague(league);
+  if (!folder) return "";
+
+  const id = espnTeamId.trim();
+  const abbr = abbreviation.trim().toLowerCase();
+
+  let segment: string;
+  if (logoUsesEspnTeamId(league)) {
+    segment = id;
+  } else {
+    // Pro / WNBA: filename is usually the team abbreviation (e.g. nyy.png).
+    // If abbr is missing (legacy rows), ESPN also serves by internal team id (e.g. 1.png for BAL).
+    segment = abbr || id;
+  }
+  if (!segment) return "";
+
+  const base = `https://a.espncdn.com/i/teamlogos/${folder}/500`;
+  return `${dark ? `${base}-dark` : base}/${segment}.png`;
+}
+
+/**
+ * League mark under /i/teamlogos/leagues/500/{file}.png — slug often differs from `espn_league`.
+ */
+const LEAGUE_LOGO_FILE: Record<string, string> = {
+  mlb: "mlb",
+  nfl: "nfl",
+  nba: "nba",
+  nhl: "nhl",
+  wnba: "wnba",
+  "usa.1": "mls",
+  "usa.nwsl": "nwsl",
+};
+
+export function leagueLogoUrl(league: string): string {
+  const file = LEAGUE_LOGO_FILE[normalizeLeagueSlug(league)];
+  if (!file) return "";
+  return `https://a.espncdn.com/i/teamlogos/leagues/500/${file}.png`;
 }

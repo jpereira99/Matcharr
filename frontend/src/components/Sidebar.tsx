@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
-import { StatusDot } from "./ui/status-dot";
 import { ThemeToggle } from "./ui/theme-toggle";
 
 const links = [
@@ -40,7 +39,7 @@ function SidebarContent({ collapsed }: { collapsed: boolean }) {
         </div>
         {!collapsed && (
           <div className="min-w-0">
-            <div className="text-sm font-bold tracking-tight font-heading text-(--color-foreground)">
+            <div className="text-sm font-extrabold tracking-tight font-heading text-(--color-foreground)">
               Matcharr
             </div>
             <div className="text-[10px] text-(--color-muted)">Stream Router</div>
@@ -108,7 +107,7 @@ export function Sidebar() {
           <div className="flex h-7 w-7 items-center justify-center rounded-(--radius-md) bg-(--color-accent)">
             <Radio className="h-3.5 w-3.5 text-(--color-accent-foreground)" />
           </div>
-          <span className="text-sm font-bold font-heading">Matcharr</span>
+          <span className="text-sm font-extrabold font-heading">Matcharr</span>
         </div>
       </div>
 

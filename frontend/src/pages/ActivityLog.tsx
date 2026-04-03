@@ -1,9 +1,11 @@
+import { TeamLogo } from "@/components/TeamLogo";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
+import type { LeagueProfile, TeamChannel } from "@/lib/types";
 import { useQuery } from "@tanstack/react-query";
 import { Activity, ArrowRight, Search } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -21,7 +23,17 @@ function reasonVariant(
 
 export function ActivityLogPage() {
   const q = useQuery({ queryKey: ["logs"], queryFn: () => api.logs(200) });
+  const channelsQ = useQuery({ queryKey: ["team-channels"], queryFn: api.listTeamChannels });
+  const profilesQ = useQuery({ queryKey: ["profiles"], queryFn: api.listProfiles });
   const [search, setSearch] = useState("");
+
+  const lookups = useMemo(() => {
+    const tcById = new Map<number, TeamChannel>();
+    for (const tc of channelsQ.data ?? []) tcById.set(tc.id, tc);
+    const profileById = new Map<number, LeagueProfile>();
+    for (const p of profilesQ.data ?? []) profileById.set(p.id, p);
+    return { tcById, profileById };
+  }, [channelsQ.data, profilesQ.data]);
 
   const filtered = useMemo(() => {
     if (!q.data) return [];
@@ -57,7 +69,7 @@ export function ActivityLogPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-bold tracking-tight font-heading">
+        <h1 className="text-2xl font-extrabold tracking-tight font-heading">
           Activity Log
         </h1>
         <p className="mt-1 text-sm text-(--color-muted)">
@@ -101,9 +113,11 @@ export function ActivityLogPage() {
           <div className="relative mt-5 ml-3 border-l-2 border-(--color-border) pl-6">
             {filtered.map((row, i) => {
               const reason = String(row.reason ?? "");
+              const tcId = row.team_channel_id as number | undefined;
+              const tc = tcId != null ? lookups.tcById.get(tcId) : undefined;
+              const profile = tc ? lookups.profileById.get(tc.league_profile_id) : undefined;
               return (
                 <div key={i} className="relative pb-6 last:pb-0">
-                  {/* Timeline dot */}
                   <span className="absolute -left-[31px] top-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-(--color-border) bg-(--color-surface)">
                     <span className="h-1.5 w-1.5 rounded-full bg-(--color-accent)" />
                   </span>
@@ -112,7 +126,16 @@ export function ActivityLogPage() {
                     <span className="font-mono text-xs text-(--color-muted)">
                       {String(row.switched_at)}
                     </span>
-                    {row.team_name && (
+                    {tc && profile && (
+                      <TeamLogo
+                        league={profile.espn_league}
+                        abbreviation={tc.espn_team_abbr}
+                        espnTeamId={tc.espn_team_id}
+                        teamName={tc.team_name}
+                        size={20}
+                      />
+                    )}
+                    {String(row.team_name ?? "") && (
                       <span className="text-sm font-medium text-(--color-foreground)">
                         {String(row.team_name)}
                       </span>
