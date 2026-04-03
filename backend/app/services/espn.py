@@ -110,8 +110,26 @@ async def fetch_teams(sport: str, league: str) -> list[dict[str, Any]]:
         tid = str(team.get("id", ""))
         name = team.get("displayName") or team.get("name") or ""
         abbr = team.get("abbreviation") or ""
-        if tid:
-            out.append({"id": tid, "name": name, "abbreviation": abbr})
+        if not tid:
+            continue
+        logos = team.get("logos") or []
+        logo = ""
+        logo_dark = ""
+        for lg in logos:
+            rels = lg.get("rel") or []
+            if "default" in rels and not logo:
+                logo = lg.get("href", "")
+            if "dark" in rels and "scoreboard" not in rels and not logo_dark:
+                logo_dark = lg.get("href", "")
+        out.append({
+            "id": tid,
+            "name": name,
+            "abbreviation": abbr,
+            "logo": logo,
+            "logo_dark": logo_dark,
+            "color": team.get("color", ""),
+            "alternateColor": team.get("alternateColor", ""),
+        })
     out.sort(key=lambda x: x["name"])
     return out
 

@@ -3,7 +3,7 @@ import { Label } from "@/components/ui/label";
 import { CUSTOM_PRESET_ID, ESPN_LEAGUE_PRESETS, presetById, presetIdForSlug } from "@/lib/espnLeagues";
 
 const selectClass =
-  "w-full rounded-lg border border-[var(--color-card-border)] bg-black/30 px-3 py-2 text-sm";
+  "w-full rounded-(--radius-md) border border-(--color-border) bg-(--color-surface) px-3 py-2 text-sm text-(--color-foreground) outline-none focus:border-(--color-accent) focus:ring-2 focus:ring-(--color-accent)/30";
 
 type Props = {
   sport: string;
@@ -17,7 +17,7 @@ export function EspnLeaguePick({ sport, league, onChange }: Props) {
   return (
     <>
       <div className="md:col-span-2">
-        <Label>ESPN league</Label>
+        <Label>ESPN League</Label>
         <select
           className={selectClass}
           value={selectVal}
@@ -36,16 +36,16 @@ export function EspnLeaguePick({ sport, league, onChange }: Props) {
               {p.label}
             </option>
           ))}
-          <option value={CUSTOM_PRESET_ID}>Other (manual sport &amp; league slugs)…</option>
+          <option value={CUSTOM_PRESET_ID}>Other (manual sport &amp; league slugs)...</option>
         </select>
-        <p className="mt-1 text-xs text-[var(--color-muted)]">
-          Uses ESPN’s public API paths for schedules and team lists. Pick “Other” if your league is not in the list.
+        <p className="mt-1 text-xs text-(--color-muted)">
+          ESPN&apos;s public API for schedules and team lists.
         </p>
       </div>
       {selectVal === CUSTOM_PRESET_ID && (
         <>
           <div>
-            <Label>ESPN sport slug</Label>
+            <Label>ESPN Sport Slug</Label>
             <Input
               value={sport}
               onChange={(e) => onChange({ espn_sport: e.target.value, espn_league: league })}
@@ -54,7 +54,7 @@ export function EspnLeaguePick({ sport, league, onChange }: Props) {
             />
           </div>
           <div>
-            <Label>ESPN league slug</Label>
+            <Label>ESPN League Slug</Label>
             <Input
               value={league}
               onChange={(e) => onChange({ espn_sport: sport, espn_league: e.target.value })}

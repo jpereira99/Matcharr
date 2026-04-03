@@ -1,4 +1,4 @@
-import type { AppSettings, Dashboard, LeagueProfile, TeamChannel } from "./types";
+import type { AppSettings, Dashboard, EspnTeam, LeagueProfile, TeamChannel } from "./types";
 
 const BASE = "/api";
 
@@ -50,7 +50,7 @@ export const api = {
   dashboard: () => req<Dashboard>("/dashboard"),
   logs: (limit = 100) => req<Record<string, unknown>[]>(`/logs?limit=${limit}`),
   espnTeams: (sport: string, league: string) =>
-    req<{ id: string; name: string; abbreviation: string }[]>(`/espn/teams?sport=${encodeURIComponent(sport)}&league=${encodeURIComponent(league)}`),
+    req<EspnTeam[]>(`/espn/teams?sport=${encodeURIComponent(sport)}&league=${encodeURIComponent(league)}`),
   dispatcharrChannels: (search = "") =>
     req<Record<string, unknown>[]>(`/dispatcharr/channels?search=${encodeURIComponent(search)}`),
   runNow: () => req<{ ok: boolean; message: string }>("/run-now", { method: "POST" }),

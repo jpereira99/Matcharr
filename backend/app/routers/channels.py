@@ -28,6 +28,7 @@ def _row_out(row: dict[str, Any]) -> TeamChannelOut:
         id=row["id"],
         team_name=row["team_name"],
         espn_team_id=str(row["espn_team_id"]),
+        espn_team_abbr=str(row.get("espn_team_abbr") or ""),
         league_profile_id=row["league_profile_id"],
         dispatcharr_channel_id=row["dispatcharr_channel_id"],
         enabled=bool(row["enabled"]),
@@ -54,12 +55,14 @@ async def create_team_channel(body: TeamChannelCreate) -> TeamChannelOut:
         await db.execute(
             """
             INSERT INTO team_channels(
-                team_name, espn_team_id, league_profile_id, dispatcharr_channel_id, enabled, aliases_json
-            ) VALUES(?,?,?,?,?,?)
+                team_name, espn_team_id, espn_team_abbr, league_profile_id,
+                dispatcharr_channel_id, enabled, aliases_json
+            ) VALUES(?,?,?,?,?,?,?)
             """,
             (
                 body.team_name,
                 body.espn_team_id,
+                body.espn_team_abbr,
                 body.league_profile_id,
                 body.dispatcharr_channel_id,
                 1 if body.enabled else 0,
@@ -89,6 +92,9 @@ async def update_team_channel(tc_id: int, body: TeamChannelUpdate) -> TeamChanne
         if body.espn_team_id is not None:
             sets.append("espn_team_id = ?")
             vals.append(body.espn_team_id)
+        if body.espn_team_abbr is not None:
+            sets.append("espn_team_abbr = ?")
+            vals.append(body.espn_team_abbr)
         if body.league_profile_id is not None:
             sets.append("league_profile_id = ?")
             vals.append(body.league_profile_id)

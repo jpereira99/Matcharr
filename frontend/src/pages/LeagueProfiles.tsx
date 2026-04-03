@@ -1,277 +1,332 @@
 import { EspnLeaguePick } from "@/components/EspnLeaguePick";
+import { LeagueBadge } from "@/components/LeagueBadge";
 import { LeagueProfileSetupIntro } from "@/components/PatternPlaceholderHelp";
 import { PatternTester } from "@/components/PatternTester";
 import { StreamPatternField } from "@/components/StreamPatternField";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Toggle } from "@/components/ui/toggle";
 import { api } from "@/lib/api";
 import type { LeagueProfile } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Pencil, Plus, Trash2, Trophy } from "lucide-react";
+import { useState } from "react";
 
-const empty: Partial<LeagueProfile> = {
-  name: "",
-  stream_pattern: "MLB {n} | {away} vs {home} | {time}",
-  stream_name_filter: "MLB",
-  espn_sport: "baseball",
-  espn_league: "mlb",
-  enabled: true,
+type FormState = {
+  name: string;
+  stream_pattern: string;
+  stream_name_filter: string;
+  espn_sport: string;
+  espn_league: string;
 };
 
-function profileToDraft(p: LeagueProfile): Partial<LeagueProfile> {
-  return {
-    name: p.name,
-    stream_pattern: p.stream_pattern,
-    stream_name_filter: p.stream_name_filter,
-    espn_sport: p.espn_sport,
-    espn_league: p.espn_league,
-    enabled: p.enabled,
-  };
-}
+const emptyForm: FormState = {
+  name: "",
+  stream_pattern: "",
+  stream_name_filter: "",
+  espn_sport: "baseball",
+  espn_league: "mlb",
+};
 
 export function LeagueProfilesPage() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["profiles"], queryFn: api.listProfiles });
-  const [draft, setDraft] = useState<Partial<LeagueProfile>>(empty);
-  const [editOpen, setEditOpen] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
+  const [form, setForm] = useState<FormState>(emptyForm);
   const [editId, setEditId] = useState<number | null>(null);
-  const [editDraft, setEditDraft] = useState<Partial<LeagueProfile>>(empty);
-  const [editError, setEditError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!editOpen || editId == null) return;
-    const p = q.data?.find((x) => x.id === editId);
-    if (p) setEditDraft(profileToDraft(p));
-  }, [editOpen, editId, q.data]);
+  const [editForm, setEditForm] = useState<FormState>(emptyForm);
+  const [editEnabled, setEditEnabled] = useState(true);
 
   const create = useMutation({
-    mutationFn: () =>
-      api.createProfile({
-        name: draft.name || "New league",
-        stream_pattern: draft.stream_pattern || "",
-        stream_name_filter: draft.stream_name_filter || "",
-        espn_sport: draft.espn_sport || "",
-        espn_league: draft.espn_league || "",
-        enabled: draft.enabled ?? true,
-      }),
+    mutationFn: (body: FormState) => api.createProfile(body),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["profiles"] });
-      setDraft(empty);
+      setForm(emptyForm);
+      setShowCreate(false);
+    },
+  });
+
+  const update = useMutation({
+    mutationFn: ({ id, ...body }: Partial<LeagueProfile> & { id: number }) =>
+      api.updateProfile(id, body),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["profiles"] });
+      setEditId(null);
     },
   });
 
   const remove = useMutation({
-    mutationFn: (id: number) => api.deleteProfile(id),
+    mutationFn: api.deleteProfile,
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["profiles"] }),
   });
 
-  const update = useMutation({
-    mutationFn: async () => {
-      if (editId == null) throw new Error("No profile selected");
-      return api.updateProfile(editId, {
-        name: editDraft.name,
-        stream_pattern: editDraft.stream_pattern,
-        stream_name_filter: editDraft.stream_name_filter,
-        espn_sport: editDraft.espn_sport,
-        espn_league: editDraft.espn_league,
-        enabled: editDraft.enabled,
-      });
-    },
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ["profiles"] });
-      setEditError(null);
-      setEditOpen(false);
-      setEditId(null);
-    },
-    onError: (err: Error) => {
-      setEditError(err.message || "Update failed");
-    },
+  const toggleEnabled = useMutation({
+    mutationFn: ({ id, enabled }: { id: number; enabled: boolean }) =>
+      api.updateProfile(id, { enabled }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["profiles"] }),
   });
 
-  const openEdit = (p: LeagueProfile) => {
-    setEditError(null);
+  function openEdit(p: LeagueProfile) {
+    setEditForm({
+      name: p.name,
+      stream_pattern: p.stream_pattern,
+      stream_name_filter: p.stream_name_filter,
+      espn_sport: p.espn_sport,
+      espn_league: p.espn_league,
+    });
+    setEditEnabled(p.enabled);
     setEditId(p.id);
-    setEditDraft(profileToDraft(p));
-    setEditOpen(true);
-  };
+  }
 
-  if (q.isLoading) return <div className="text-[var(--color-muted)]">Loading…</div>;
-  if (q.isError) return <div className="text-red-400">Failed to load profiles</div>;
+  if (q.isLoading)
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-8 w-48" />
+        <div className="grid gap-4 md:grid-cols-2">
+          {[1, 2].map((i) => (
+            <Skeleton key={i} className="h-40" />
+          ))}
+        </div>
+      </div>
+    );
 
   return (
-    <div className="space-y-8">
-      <header>
-        <h1 className="text-3xl font-semibold tracking-tight">League profiles</h1>
-        <p className="mt-1 text-sm text-[var(--color-muted)]">
-          Tell the router how Dispatcharr titles are shaped, and which ESPN league to load schedules from.
-        </p>
+    <div className="space-y-6">
+      <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight font-heading">
+            League Profiles
+          </h1>
+          <p className="mt-1 text-sm text-(--color-muted)">
+            Define stream patterns and ESPN league mappings.
+          </p>
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          onClick={() => setShowCreate(!showCreate)}
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Create Profile
+        </Button>
       </header>
 
-      <LeagueProfileSetupIntro />
-
-      {!q.data?.length && (
+      {/* Create panel */}
+      {showCreate && (
         <Card>
-          <p className="text-sm text-[var(--color-muted)]">
-            No profiles yet. Add one below, then map teams in{" "}
-            <Link to="/teams" className="text-[var(--color-accent)] underline-offset-2 hover:underline">
-              Team channels
-            </Link>
-            .
-          </p>
+          <CardTitle>New Profile</CardTitle>
+          <div className="mt-3">
+            <LeagueProfileSetupIntro />
+          </div>
+          <form
+            className="mt-4 grid gap-4 md:grid-cols-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              create.mutate(form);
+            }}
+          >
+            <div>
+              <Label htmlFor="new-name">Name</Label>
+              <Input
+                id="new-name"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="e.g. MLB Streams"
+              />
+            </div>
+            <div>
+              <Label htmlFor="new-filter">Stream Name Filter</Label>
+              <Input
+                id="new-filter"
+                value={form.stream_name_filter}
+                onChange={(e) =>
+                  setForm({ ...form, stream_name_filter: e.target.value })
+                }
+                placeholder="Optional Dispatcharr filter"
+              />
+            </div>
+            <EspnLeaguePick
+              sport={form.espn_sport}
+              league={form.espn_league}
+              onChange={(v) =>
+                setForm({ ...form, espn_sport: v.espn_sport, espn_league: v.espn_league })
+              }
+            />
+            <StreamPatternField
+              value={form.stream_pattern}
+              onChange={(v) => setForm({ ...form, stream_pattern: v })}
+            />
+            <PatternTester pattern={form.stream_pattern} />
+            <div className="md:col-span-2 flex gap-2 pt-2">
+              <Button type="submit" disabled={create.isPending || !form.name || !form.stream_pattern}>
+                {create.isPending ? "Creating..." : "Create Profile"}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setShowCreate(false);
+                  setForm(emptyForm);
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
         </Card>
       )}
 
-      <Card id="create-profile">
-        <CardTitle>Create profile</CardTitle>
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <div>
-            <Label>Name</Label>
-            <Input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
-          </div>
-          <div>
-            <Label>Stream name filter (Dispatcharr search)</Label>
-            <Input
-              value={draft.stream_name_filter}
-              onChange={(e) => setDraft({ ...draft, stream_name_filter: e.target.value })}
-            />
-            <p className="mt-1 text-xs text-[var(--color-muted)]">
-              Same idea as searching streams in Dispatcharr—only titles containing this substring are considered.
-            </p>
-          </div>
-          <StreamPatternField
-            value={draft.stream_pattern || ""}
-            onChange={(next) => setDraft({ ...draft, stream_pattern: next })}
-            idSuffix="-create"
-          />
-          <EspnLeaguePick
-            sport={draft.espn_sport || ""}
-            league={draft.espn_league || ""}
-            onChange={(next) => setDraft({ ...draft, ...next })}
-          />
-        </div>
-        <PatternTester pattern={draft.stream_pattern || ""} />
-        <div className="mt-4 flex justify-end">
-          <Button type="button" onClick={() => create.mutate()} disabled={create.isPending}>
-            <Plus className="h-4 w-4" />
-            Add profile
-          </Button>
-        </div>
-      </Card>
-
-      <div className="space-y-4">
-        {q.data?.map((p) => (
-          <Card key={p.id}>
-            <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-semibold">{p.name}</h3>
-                  {!p.enabled && (
-                    <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-[var(--color-muted)]">Disabled</span>
-                  )}
-                </div>
-                <p className="mt-1 font-mono text-xs text-[var(--color-muted)]">{p.stream_pattern}</p>
-                <p className="mt-2 text-xs text-[var(--color-muted)]">
-                  ESPN: {p.espn_sport}/{p.espn_league} · filter: {p.stream_name_filter || "(none)"} ·{" "}
-                  {(p.team_channel_count ?? 0) === 0 ? (
-                    <span className="text-amber-400/90">No team mappings</span>
-                  ) : (
-                    <span>
-                      {p.team_channel_count} team mapping{(p.team_channel_count ?? 0) === 1 ? "" : "s"}
-                    </span>
-                  )}
-                </p>
-              </div>
-              <div className="flex shrink-0 flex-wrap gap-2">
-                <Button type="button" variant="ghost" onClick={() => openEdit(p)}>
-                  <Pencil className="h-4 w-4" />
-                  Edit
-                </Button>
-                <Button type="button" variant="danger" onClick={() => remove.mutate(p.id)}>
-                  <Trash2 className="h-4 w-4" />
-                  Delete
-                </Button>
-              </div>
-            </div>
-            <PatternTester pattern={p.stream_pattern} />
-          </Card>
-        ))}
-      </div>
-
-      <Dialog
-        open={editOpen}
-        onClose={() => {
-          if (!update.isPending) {
-            setEditOpen(false);
-            setEditId(null);
-            setEditError(null);
+      {/* Profile grid */}
+      {!q.data?.length && !showCreate ? (
+        <EmptyState
+          icon={Trophy}
+          title="No league profiles"
+          description="Create a profile to start mapping ESPN schedules to your Dispatcharr streams."
+          action={
+            <Button size="sm" onClick={() => setShowCreate(true)}>
+              <Plus className="h-3.5 w-3.5" /> Create Profile
+            </Button>
           }
-        }}
-        title="Edit league profile"
-        className="max-w-2xl"
-      >
+        />
+      ) : (
         <div className="grid gap-4 md:grid-cols-2">
+          {q.data?.map((p) => (
+            <Card key={p.id} className="flex flex-col">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <LeagueBadge league={p.espn_league} />
+                  <h3 className="text-sm font-semibold truncate">{p.name}</h3>
+                </div>
+                <Toggle
+                  checked={p.enabled}
+                  onChange={(v) =>
+                    toggleEnabled.mutate({ id: p.id, enabled: v })
+                  }
+                  label={p.enabled ? "Enabled" : "Disabled"}
+                />
+              </div>
+
+              <div className="mt-3 rounded-(--radius-sm) bg-(--color-surface-raised) px-3 py-2 font-mono text-xs text-(--color-foreground) break-all">
+                {p.stream_pattern || "—"}
+              </div>
+
+              {p.stream_name_filter && (
+                <div className="mt-2 text-xs text-(--color-muted)">
+                  Filter: <span className="font-mono text-(--color-foreground)">{p.stream_name_filter}</span>
+                </div>
+              )}
+
+              <div className="mt-auto flex items-center justify-between pt-4">
+                <Badge variant="muted">
+                  {p.team_channel_count ?? 0} team{(p.team_channel_count ?? 0) !== 1 ? "s" : ""} mapped
+                </Badge>
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    onClick={() => openEdit(p)}
+                    className="rounded-(--radius-sm) p-1.5 text-(--color-muted) hover:bg-(--color-surface-raised) hover:text-(--color-foreground) transition-colors cursor-pointer"
+                    aria-label="Edit"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (confirm(`Delete "${p.name}"?`)) remove.mutate(p.id);
+                    }}
+                    className="rounded-(--radius-sm) p-1.5 text-(--color-muted) hover:bg-(--color-danger)/10 hover:text-(--color-danger) transition-colors cursor-pointer"
+                    aria-label="Delete"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Edit dialog */}
+      <Dialog
+        open={editId !== null}
+        onClose={() => setEditId(null)}
+        title="Edit Profile"
+        variant="panel"
+      >
+        <form
+          className="grid gap-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (editId == null) return;
+            update.mutate({
+              id: editId,
+              ...editForm,
+              enabled: editEnabled,
+            });
+          }}
+        >
+          <div className="flex items-center gap-3">
+            <Label className="mb-0">Enabled</Label>
+            <Toggle checked={editEnabled} onChange={setEditEnabled} />
+          </div>
           <div>
             <Label>Name</Label>
-            <Input value={editDraft.name ?? ""} onChange={(e) => setEditDraft({ ...editDraft, name: e.target.value })} />
+            <Input
+              value={editForm.name}
+              onChange={(e) =>
+                setEditForm({ ...editForm, name: e.target.value })
+              }
+            />
           </div>
           <div>
-            <Label>Stream name filter (Dispatcharr search)</Label>
+            <Label>Stream Name Filter</Label>
             <Input
-              value={editDraft.stream_name_filter ?? ""}
-              onChange={(e) => setEditDraft({ ...editDraft, stream_name_filter: e.target.value })}
+              value={editForm.stream_name_filter}
+              onChange={(e) =>
+                setEditForm({ ...editForm, stream_name_filter: e.target.value })
+              }
+              placeholder="Optional"
             />
-            <p className="mt-1 text-xs text-[var(--color-muted)]">
-              Same idea as searching streams in Dispatcharr—only titles containing this substring are considered.
-            </p>
           </div>
+          <EspnLeaguePick
+            sport={editForm.espn_sport}
+            league={editForm.espn_league}
+            onChange={(v) =>
+              setEditForm({
+                ...editForm,
+                espn_sport: v.espn_sport,
+                espn_league: v.espn_league,
+              })
+            }
+          />
           <StreamPatternField
-            value={editDraft.stream_pattern ?? ""}
-            onChange={(next) => setEditDraft({ ...editDraft, stream_pattern: next })}
-            idSuffix={editId != null ? `-edit-${editId}` : "-edit"}
+            value={editForm.stream_pattern}
+            onChange={(v) =>
+              setEditForm({ ...editForm, stream_pattern: v })
+            }
+            idSuffix="-edit"
             compactHelp
           />
-          <EspnLeaguePick
-            sport={editDraft.espn_sport ?? ""}
-            league={editDraft.espn_league ?? ""}
-            onChange={(next) => setEditDraft({ ...editDraft, ...next })}
-          />
-          <div className="md:col-span-2 flex items-center gap-2">
-            <input
-              id="edit-enabled"
-              type="checkbox"
-              className="h-4 w-4 rounded border-white/20"
-              checked={editDraft.enabled ?? true}
-              onChange={(e) => setEditDraft({ ...editDraft, enabled: e.target.checked })}
-            />
-            <Label htmlFor="edit-enabled" className="cursor-pointer">
-              Enabled
-            </Label>
+          <PatternTester pattern={editForm.stream_pattern} />
+          <div className="flex gap-2 pt-2">
+            <Button type="submit" disabled={update.isPending}>
+              {update.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setEditId(null)}
+            >
+              Cancel
+            </Button>
           </div>
-        </div>
-        <PatternTester pattern={editDraft.stream_pattern || ""} />
-        {editError && <p className="mt-3 text-sm text-[var(--color-danger)]">{editError}</p>}
-        <div className="mt-4 flex justify-end gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => {
-              setEditOpen(false);
-              setEditId(null);
-              setEditError(null);
-            }}
-            disabled={update.isPending}
-          >
-            Cancel
-          </Button>
-          <Button type="button" onClick={() => update.mutate()} disabled={update.isPending}>
-            {update.isPending ? "Saving…" : "Save changes"}
-          </Button>
-        </div>
+        </form>
       </Dialog>
     </div>
   );
