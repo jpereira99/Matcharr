@@ -20,8 +20,8 @@ const links = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/profiles", label: "League Profiles", icon: Trophy },
   { to: "/teams", label: "Team Channels", icon: Users },
-  { to: "/settings", label: "Settings", icon: Settings },
   { to: "/logs", label: "Activity Log", icon: Activity },
+  { to: "/settings", label: "Settings", icon: Settings },
 ];
 
 function SidebarContent({ collapsed }: { collapsed: boolean }) {
