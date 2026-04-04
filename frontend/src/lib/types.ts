@@ -24,11 +24,22 @@ export type TeamChannel = {
   id: number;
   team_name: string;
   espn_team_id: string;
+  espn_team_abbr: string;
   league_profile_id: number;
   dispatcharr_channel_id: number;
   enabled: boolean;
   aliases: string[];
   created_at: string;
+};
+
+export type EspnTeam = {
+  id: string;
+  name: string;
+  abbreviation: string;
+  logo: string;
+  logo_dark: string;
+  color: string;
+  alternateColor: string;
 };
 
 export type UpcomingGameExtraLeague = {

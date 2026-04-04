@@ -207,6 +207,47 @@ async def maybe_refresh_schedules(db: aiosqlite.Connection) -> None:
     await refresh_all_schedules(db)
 
 
+def compute_next_espn_refresh_at(
+    *,
+    last_schedule_refresh_iso: str | None,
+    schedule_refresh_hours: int,
+    next_scan_iso: str | None,
+    scan_interval_minutes: int,
+) -> str | None:
+    """Earliest time the periodic match job will next pull ESPN schedules (same throttle as maybe_refresh)."""
+    if not next_scan_iso:
+        return None
+    try:
+        next_scan = datetime.fromisoformat(next_scan_iso.replace("Z", "+00:00"))
+        if next_scan.tzinfo is None:
+            next_scan = next_scan.replace(tzinfo=timezone.utc)
+    except Exception:
+        return None
+
+    if not last_schedule_refresh_iso:
+        return next_scan_iso
+
+    try:
+        last = datetime.fromisoformat(last_schedule_refresh_iso.replace("Z", "+00:00"))
+        if last.tzinfo is None:
+            last = last.replace(tzinfo=timezone.utc)
+    except Exception:
+        return next_scan_iso
+
+    threshold = last + timedelta(hours=schedule_refresh_hours)
+    now = datetime.now(timezone.utc)
+    if now >= threshold:
+        return next_scan_iso
+
+    interval = timedelta(minutes=max(1, scan_interval_minutes))
+    t = next_scan
+    guard = 0
+    while t < threshold and guard < 1_000_000:
+        t += interval
+        guard += 1
+    return t.isoformat()
+
+
 def _find_matching_stream(
     compiled: CompiledPattern,
     streams: list[dict[str, Any]],
@@ -244,6 +285,7 @@ async def run_match_cycle(db: aiosqlite.Connection, *, force_schedule_refresh: b
     """
     settings = await load_settings(db)
     if not settings.dispatcharr_url or not settings.dispatcharr_token:
+        await kv_set(db, "last_match_cycle_at", datetime.now(timezone.utc).isoformat())
         return {"ok": False, "message": "Dispatcharr not configured", "switches": 0}
 
     if force_schedule_refresh:
@@ -371,6 +413,7 @@ async def run_match_cycle(db: aiosqlite.Connection, *, force_schedule_refresh: b
         cur = await db.execute("SELECT COUNT(*) FROM schedule_cache")
         n_cached = (await cur.fetchone())[0]
         msg += f" ESPN schedule cache: {n_cached} game row(s). If 0, check league profile ESPN sport/league slugs."
+    await kv_set(db, "last_match_cycle_at", datetime.now(timezone.utc).isoformat())
     return {"ok": True, "message": msg, "switches": switches, "errors": errors}
 
 

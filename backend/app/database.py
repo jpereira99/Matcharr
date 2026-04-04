@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS team_channels (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     team_name TEXT NOT NULL,
     espn_team_id TEXT NOT NULL,
+    espn_team_abbr TEXT NOT NULL DEFAULT '',
     league_profile_id INTEGER NOT NULL REFERENCES league_profiles(id) ON DELETE CASCADE,
     dispatcharr_channel_id INTEGER NOT NULL,
     enabled INTEGER NOT NULL DEFAULT 1,
@@ -76,6 +77,13 @@ async def init_db() -> None:
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     async with aiosqlite.connect(settings.database_path) as db:
         await db.executescript(SCHEMA)
+        # Migrate: add espn_team_abbr if missing (existing DBs)
+        cur = await db.execute("PRAGMA table_info(team_channels)")
+        cols = {row[1] for row in await cur.fetchall()}
+        if "espn_team_abbr" not in cols:
+            await db.execute(
+                "ALTER TABLE team_channels ADD COLUMN espn_team_abbr TEXT NOT NULL DEFAULT ''"
+            )
         await db.commit()
 
 

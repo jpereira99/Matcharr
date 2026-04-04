@@ -1,19 +1,32 @@
-import { cn } from "@/lib/utils";
-import type { ReactNode } from "react";
+import { cn } from '@/lib/utils';
+import type { CSSProperties, ReactNode } from 'react';
 
-export function Card({ className, children }: { className?: string; children: ReactNode }) {
-  return (
-    <div
-      className={cn(
-        "rounded-2xl border border-[var(--color-card-border)] bg-[var(--color-card)]/90 p-6 shadow-xl shadow-black/20 backdrop-blur-md",
-        className,
-      )}
-    >
-      {children}
-    </div>
-  );
+type CardProps = {
+	className?: string;
+	children: ReactNode;
+	variant?: 'default' | 'outlined' | 'raised';
+	colorAccent?: string;
+};
+
+export function Card({ className, children, variant = 'default', colorAccent }: CardProps) {
+	const style: CSSProperties | undefined = colorAccent ? { borderTopColor: colorAccent, borderTopWidth: '3px' } : undefined;
+
+	return (
+		<div
+			style={style}
+			className={cn(
+				'rounded-(--radius-lg) border border-(--color-border) p-5 transition-shadow duration-150',
+				variant === 'default' && 'bg-(--color-surface) shadow-(--shadow-card)',
+				variant === 'outlined' && 'bg-transparent',
+				variant === 'raised' && 'bg-(--color-surface-raised) shadow-(--shadow-card-hover)',
+				className,
+			)}
+		>
+			{children}
+		</div>
+	);
 }
 
-export function CardTitle({ children }: { children: ReactNode }) {
-  return <h2 className="text-lg font-semibold tracking-tight">{children}</h2>;
+export function CardTitle({ children, className }: { children: ReactNode; className?: string }) {
+	return <h2 className={cn('text-lg font-extrabold tracking-tight font-heading', className)}>{children}</h2>;
 }

@@ -26,9 +26,9 @@ export function PatternTester({ pattern }: Props) {
         setResult(`Error: ${r.error}`);
       } else if (r.matched) {
         setGroups(r.groups);
-        setResult("Matched — captured groups below. These names are what the router compares to ESPN (and your aliases).");
+        setResult("Matched — captured groups below.");
       } else {
-        setResult("No match — adjust the pattern so it mirrors your provider’s title format (spacing, vs vs x, etc.).");
+        setResult("No match — adjust the pattern to mirror your provider's title format.");
       }
     } catch (e) {
       setResult(String(e));
@@ -38,11 +38,10 @@ export function PatternTester({ pattern }: Props) {
   }
 
   return (
-    <div className="mt-4 rounded-xl border border-dashed border-white/15 bg-black/20 p-4">
-      <div className="text-xs font-semibold uppercase tracking-wide text-[var(--color-muted)]">Pattern tester</div>
-      <p className="mt-2 text-xs text-[var(--color-muted)]">
-        Paste a real stream title from Dispatcharr. A successful match shows which substring becomes “away” and “home”
-        for routing.
+    <div className="mt-4 rounded-(--radius-lg) border border-dashed border-(--color-border) bg-(--color-surface-raised)/50 p-4">
+      <div className="text-xs font-semibold uppercase tracking-wide text-(--color-muted)">Pattern Tester</div>
+      <p className="mt-2 text-xs text-(--color-muted)">
+        Paste a real stream title from Dispatcharr to verify your pattern captures team names correctly.
       </p>
       <div className="mt-3 grid gap-3 md:grid-cols-2">
         <div>
@@ -50,19 +49,19 @@ export function PatternTester({ pattern }: Props) {
           <Input value={sample} onChange={(e) => setSample(e.target.value)} className="font-mono text-xs" />
         </div>
         <div className="flex items-end">
-          <Button type="button" variant="ghost" onClick={() => void run()} disabled={loading}>
-            {loading ? "Testing…" : "Test against pattern"}
+          <Button type="button" variant="ghost" size="sm" onClick={() => void run()} disabled={loading}>
+            {loading ? "Testing..." : "Test Pattern"}
           </Button>
         </div>
       </div>
       {result && (
         <div className="mt-3 space-y-2">
-          <p className="text-sm text-[var(--color-foreground)]">{result}</p>
+          <p className="text-sm text-(--color-foreground)">{result}</p>
           {groups && Object.keys(groups).length > 0 && (
-            <ul className="rounded-lg bg-black/40 px-3 py-2 font-mono text-xs text-[var(--color-foreground)]">
+            <ul className="rounded-(--radius-md) bg-(--color-surface) px-3 py-2 font-mono text-xs text-(--color-foreground)">
               {Object.entries(groups).map(([k, v]) => (
                 <li key={k}>
-                  <span className="text-[var(--color-muted)]">{k}:</span> {v}
+                  <span className="text-(--color-muted)">{k}:</span> {v}
                 </li>
               ))}
             </ul>

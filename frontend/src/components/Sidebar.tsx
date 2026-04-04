@@ -1,28 +1,54 @@
+import { useSidebar } from "@/hooks/useSidebar";
 import { cn } from "@/lib/utils";
-import { Activity, LayoutDashboard, Radio, Settings, Trophy, Users } from "lucide-react";
+import {
+  Activity,
+  ChevronLeft,
+  ChevronRight,
+  LayoutDashboard,
+  Menu,
+  Radio,
+  Settings,
+  Trophy,
+  Users,
+  X,
+} from "lucide-react";
+import { useState } from "react";
 import { NavLink } from "react-router-dom";
+import { ThemeToggle } from "./ui/theme-toggle";
 
 const links = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/profiles", label: "League profiles", icon: Trophy },
-  { to: "/teams", label: "Team channels", icon: Users },
+  { to: "/profiles", label: "League Profiles", icon: Trophy },
+  { to: "/teams", label: "Team Channels", icon: Users },
   { to: "/settings", label: "Settings", icon: Settings },
-  { to: "/logs", label: "Activity log", icon: Activity },
+  { to: "/logs", label: "Activity Log", icon: Activity },
 ];
 
-export function Sidebar() {
+function SidebarContent({ collapsed }: { collapsed: boolean }) {
   return (
-    <aside className="sticky top-0 flex h-screen w-64 flex-col border-r border-white/5 bg-[var(--color-sidebar)]/95 backdrop-blur-xl">
-      <div className="flex items-center gap-3 border-b border-white/5 px-6 py-6">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 shadow-lg shadow-fuchsia-500/30">
-          <Radio className="h-5 w-5 text-white" />
+    <>
+      {/* Brand */}
+      <div
+        className={cn(
+          "flex items-center border-b border-(--color-border) px-4 py-5",
+          collapsed ? "justify-center" : "gap-3",
+        )}
+      >
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-(--radius-lg) bg-(--color-accent) shadow-md">
+          <Radio className="h-4.5 w-4.5 text-(--color-accent-foreground)" />
         </div>
-        <div>
-          <div className="text-sm font-semibold tracking-tight">Matcharr</div>
-          <div className="text-xs text-[var(--color-muted)]">Dispatcharr router</div>
-        </div>
+        {!collapsed && (
+          <div className="min-w-0">
+            <div className="text-sm font-extrabold tracking-tight font-heading text-(--color-foreground)">
+              Matcharr
+            </div>
+            <div className="text-[10px] text-(--color-muted)">Stream Router</div>
+          </div>
+        )}
       </div>
-      <nav className="flex flex-1 flex-col gap-1 p-3">
+
+      {/* Nav */}
+      <nav className="flex flex-1 flex-col gap-0.5 p-2">
         {links.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
@@ -30,21 +56,107 @@ export function Sidebar() {
             end={to === "/"}
             className={({ isActive }) =>
               cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition",
+                "group relative flex items-center rounded-(--radius-md) transition-colors duration-150",
+                collapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2.5",
                 isActive
-                  ? "bg-white/10 text-white shadow-inner shadow-black/20"
-                  : "text-[var(--color-muted)] hover:bg-white/5 hover:text-white",
+                  ? "bg-(--color-accent)/10 text-(--color-accent)"
+                  : "text-(--color-muted) hover:bg-(--color-surface-raised) hover:text-(--color-foreground)",
               )
             }
           >
-            <Icon className="h-4 w-4 shrink-0 opacity-90" />
-            {label}
+            {({ isActive }) => (
+              <>
+                {isActive && (
+                  <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-(--color-accent)" />
+                )}
+                <Icon className="h-4 w-4 shrink-0" />
+                {!collapsed && (
+                  <span className="text-sm font-medium">{label}</span>
+                )}
+              </>
+            )}
           </NavLink>
         ))}
       </nav>
-      <div className="border-t border-white/5 p-4 text-[10px] leading-relaxed text-[var(--color-muted)]">
-        Streams are discovered via Dispatcharr&apos;s API. Patterns map ESPN schedules to stream names.
+
+      {/* Bottom */}
+      <div className="border-t border-(--color-border) p-2">
+        <ThemeToggle collapsed={collapsed} />
       </div>
-    </aside>
+    </>
+  );
+}
+
+export function Sidebar() {
+  const { collapsed, toggle } = useSidebar();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  return (
+    <>
+      {/* Mobile top bar */}
+      <div className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-(--color-border) bg-(--color-sidebar) px-4 md:hidden">
+        <button
+          type="button"
+          onClick={() => setMobileOpen(true)}
+          className="rounded-(--radius-md) p-1.5 text-(--color-muted) hover:bg-(--color-surface-raised) hover:text-(--color-foreground)"
+          aria-label="Open menu"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+        <div className="flex items-center gap-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-(--radius-md) bg-(--color-accent)">
+            <Radio className="h-3.5 w-3.5 text-(--color-accent-foreground)" />
+          </div>
+          <span className="text-sm font-extrabold font-heading">Matcharr</span>
+        </div>
+      </div>
+
+      {/* Mobile drawer overlay */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setMobileOpen(false)}
+            aria-label="Close menu"
+          />
+          <aside className="relative z-10 flex h-full w-64 flex-col bg-(--color-sidebar)">
+            <div className="flex items-center justify-end p-2">
+              <button
+                type="button"
+                onClick={() => setMobileOpen(false)}
+                className="rounded-(--radius-md) p-1.5 text-(--color-muted) hover:bg-(--color-surface-raised)"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <SidebarContent collapsed={false} />
+          </aside>
+        </div>
+      )}
+
+      {/* Desktop sidebar */}
+      <aside
+        className={cn(
+          "sticky top-0 hidden h-screen flex-col border-r border-(--color-border) bg-(--color-sidebar) transition-[width] duration-200 md:flex",
+          collapsed ? "w-16" : "w-[260px]",
+        )}
+      >
+        <SidebarContent collapsed={collapsed} />
+        <button
+          type="button"
+          onClick={toggle}
+          className="absolute -right-3 top-7 z-20 flex h-6 w-6 items-center justify-center rounded-full border border-(--color-border) bg-(--color-surface) text-(--color-muted) shadow-sm hover:text-(--color-foreground) transition-colors cursor-pointer"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          {collapsed ? (
+            <ChevronRight className="h-3 w-3" />
+          ) : (
+            <ChevronLeft className="h-3 w-3" />
+          )}
+        </button>
+      </aside>
+    </>
   );
 }

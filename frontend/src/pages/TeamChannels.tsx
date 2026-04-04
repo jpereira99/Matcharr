@@ -1,347 +1,551 @@
+import { AliasesFieldHelp } from "@/components/PatternPlaceholderHelp";
+import { LeagueBadge } from "@/components/LeagueBadge";
+import { TeamLogo } from "@/components/TeamLogo";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { AliasesFieldHelp } from "@/components/PatternPlaceholderHelp";
+import { Skeleton } from "@/components/ui/skeleton";
+import { StatusDot } from "@/components/ui/status-dot";
+import { Tabs } from "@/components/ui/tabs";
+import { Toggle } from "@/components/ui/toggle";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { api } from "@/lib/api";
-import type { TeamChannel } from "@/lib/types";
+import type { EspnTeam, LeagueProfile, TeamChannel } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Link2, Pencil, Plus, Search, Trash2, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-function channelRowLabel(c: Record<string, unknown>): string {
-  const id = c.id ?? c.pk;
-  const name = c.name ?? c.title ?? "";
-  return `${String(id)} — ${String(name)}`;
-}
+type CreateForm = {
+  league_profile_id: number;
+  espn_team_id: string;
+  espn_team_abbr: string;
+  team_name: string;
+  dispatcharr_channel_id: string;
+  aliases: string;
+  enabled: boolean;
+};
+
+const emptyCreate: CreateForm = {
+  league_profile_id: 0,
+  espn_team_id: "",
+  espn_team_abbr: "",
+  team_name: "",
+  dispatcharr_channel_id: "",
+  aliases: "",
+  enabled: true,
+};
 
 export function TeamChannelsPage() {
   const qc = useQueryClient();
-  const profiles = useQuery({ queryKey: ["profiles"], queryFn: api.listProfiles });
-  const teams = useQuery({ queryKey: ["team-channels"], queryFn: api.listTeamChannels });
+  const profilesQ = useQuery({
+    queryKey: ["profiles"],
+    queryFn: api.listProfiles,
+  });
+  const channelsQ = useQuery({
+    queryKey: ["team-channels"],
+    queryFn: api.listTeamChannels,
+  });
 
-  const [leagueProfileId, setLeagueProfileId] = useState<number | "">("");
-  const profile = useMemo(
-    () => profiles.data?.find((p) => p.id === leagueProfileId),
-    [profiles.data, leagueProfileId],
+  const [activeProfile, setActiveProfile] = useState<string>("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showCreate, setShowCreate] = useState(false);
+  const [form, setForm] = useState<CreateForm>(emptyCreate);
+
+  // ESPN teams for selected profile in create form
+  const selectedProfile = profilesQ.data?.find(
+    (p) => p.id === form.league_profile_id,
   );
-
-  const espnTeams = useQuery({
-    queryKey: ["espn-teams", profile?.espn_sport, profile?.espn_league],
-    queryFn: () => api.espnTeams(profile!.espn_sport, profile!.espn_league),
-    enabled: !!profile,
+  const espnTeamsQ = useQuery({
+    queryKey: [
+      "espn-teams",
+      selectedProfile?.espn_sport,
+      selectedProfile?.espn_league,
+    ],
+    queryFn: () =>
+      api.espnTeams(selectedProfile!.espn_sport, selectedProfile!.espn_league),
+    enabled: !!selectedProfile,
   });
 
-  const [dispatcharrChannelId, setDispatcharrChannelId] = useState("");
-  const [aliases, setAliases] = useState("");
-  const [espnTeamId, setEspnTeamId] = useState("");
-  const [daSearch, setDaSearch] = useState("");
-  const debouncedDaSearch = useDebouncedValue(daSearch, 350);
-  const daChannels = useQuery({
-    queryKey: ["dispatcharr-channels", debouncedDaSearch],
-    queryFn: () => api.dispatcharrChannels(debouncedDaSearch),
-    retry: false,
+  // Edit state (declared early — dispatcharrQ.enabled references editId)
+  const [editId, setEditId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState<CreateForm>(emptyCreate);
+
+  // Dispatcharr channel search
+  const [channelSearch, setChannelSearch] = useState("");
+  const debouncedChannelSearch = useDebouncedValue(channelSearch, 400);
+  const dispatcharrQ = useQuery({
+    queryKey: ["dispatcharr-channels", debouncedChannelSearch],
+    queryFn: () => api.dispatcharrChannels(debouncedChannelSearch),
+    enabled: showCreate || editId !== null,
+  });
+  const [editChannelSearch, setEditChannelSearch] = useState("");
+  const debouncedEditSearch = useDebouncedValue(editChannelSearch, 400);
+  const editDispatcharrQ = useQuery({
+    queryKey: ["dispatcharr-channels-edit", debouncedEditSearch],
+    queryFn: () => api.dispatcharrChannels(debouncedEditSearch),
+    enabled: editId !== null,
   });
 
-  const [editOpen, setEditOpen] = useState(false);
-  const [editRow, setEditRow] = useState<TeamChannel | null>(null);
-  const [editLeagueProfileId, setEditLeagueProfileId] = useState<number | "">("");
-  const [editEspnTeamId, setEditEspnTeamId] = useState("");
-  const [editDispatcharrChannelId, setEditDispatcharrChannelId] = useState("");
-  const [editAliases, setEditAliases] = useState("");
-  const [editEnabled, setEditEnabled] = useState(true);
-  const [editDaSearch, setEditDaSearch] = useState("");
-  const debouncedEditDaSearch = useDebouncedValue(editDaSearch, 350);
-  const editDaChannels = useQuery({
-    queryKey: ["dispatcharr-channels", "edit", debouncedEditDaSearch],
-    queryFn: () => api.dispatcharrChannels(debouncedEditDaSearch),
-    retry: false,
-    enabled: editOpen,
-  });
-  const [editError, setEditError] = useState<string | null>(null);
-
-  const editProfile = useMemo(
-    () => profiles.data?.find((p) => p.id === editLeagueProfileId),
-    [profiles.data, editLeagueProfileId],
+  const editProfile = profilesQ.data?.find(
+    (p) => p.id === editForm.league_profile_id,
   );
-  const editEspnTeams = useQuery({
-    queryKey: ["espn-teams", "edit", editProfile?.espn_sport, editProfile?.espn_league],
-    queryFn: () => api.espnTeams(editProfile!.espn_sport, editProfile!.espn_league),
-    enabled: !!editProfile && editOpen,
+  const editEspnTeamsQ = useQuery({
+    queryKey: [
+      "espn-teams-edit",
+      editProfile?.espn_sport,
+      editProfile?.espn_league,
+    ],
+    queryFn: () =>
+      api.espnTeams(editProfile!.espn_sport, editProfile!.espn_league),
+    enabled: !!editProfile && editId !== null,
   });
 
+  // When profiles load, set default
   useEffect(() => {
-    if (profiles.data?.length && leagueProfileId === "") {
-      setLeagueProfileId(profiles.data[0].id);
+    if (profilesQ.data?.length && form.league_profile_id === 0) {
+      setForm((f) => ({ ...f, league_profile_id: profilesQ.data![0].id }));
     }
-  }, [profiles.data, leagueProfileId]);
-
-  useEffect(() => {
-    if (espnTeams.data?.length) {
-      setEspnTeamId(espnTeams.data[0].id);
-    } else {
-      setEspnTeamId("");
-    }
-  }, [espnTeams.data, leagueProfileId]);
-
-  useEffect(() => {
-    if (!editOpen || !editEspnTeams.data?.length) return;
-    if (!editEspnTeams.data.some((x) => x.id === editEspnTeamId)) {
-      setEditEspnTeamId(editEspnTeams.data[0].id);
-    }
-  }, [editOpen, editEspnTeams.data, editEspnTeamId]);
+  }, [profilesQ.data, form.league_profile_id]);
 
   const create = useMutation({
-    mutationFn: async () => {
-      if (!profile || !espnTeams.data?.length) throw new Error("Pick a league with teams loaded");
-      const pick = espnTeams.data.find((x) => x.id === espnTeamId) ?? espnTeams.data[0];
-      return api.createTeamChannel({
-        team_name: pick.name,
-        espn_team_id: pick.id,
-        league_profile_id: profile.id,
-        dispatcharr_channel_id: Number(dispatcharrChannelId || 0),
-        enabled: true,
-        aliases: aliases
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean),
-      });
-    },
+    mutationFn: (body: Omit<TeamChannel, "id" | "created_at">) =>
+      api.createTeamChannel(body),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["team-channels"] });
       void qc.invalidateQueries({ queryKey: ["profiles"] });
-    },
-  });
-
-  const remove = useMutation({
-    mutationFn: (id: number) => api.deleteTeamChannel(id),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ["team-channels"] });
-      void qc.invalidateQueries({ queryKey: ["profiles"] });
+      setForm((f) => ({
+        ...emptyCreate,
+        league_profile_id: f.league_profile_id,
+      }));
+      setShowCreate(false);
     },
   });
 
   const update = useMutation({
-    mutationFn: async () => {
-      if (!editRow) throw new Error("Nothing to edit");
-      const pick = editEspnTeams.data?.find((x) => x.id === editEspnTeamId);
-      return api.updateTeamChannel(editRow.id, {
-        team_name: pick?.name ?? editRow.team_name,
-        espn_team_id: editEspnTeamId || editRow.espn_team_id,
-        league_profile_id: editLeagueProfileId === "" ? editRow.league_profile_id : Number(editLeagueProfileId),
-        dispatcharr_channel_id: Number(editDispatcharrChannelId || 0),
-        enabled: editEnabled,
-        aliases: editAliases
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean),
-      });
-    },
+    mutationFn: ({ id, ...body }: Partial<TeamChannel> & { id: number }) =>
+      api.updateTeamChannel(id, body),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["team-channels"] });
       void qc.invalidateQueries({ queryKey: ["profiles"] });
-      setEditError(null);
-      setEditOpen(false);
-      setEditRow(null);
+      setEditId(null);
     },
-    onError: (err: Error) => setEditError(err.message || "Update failed"),
   });
 
-  const openEdit = (t: TeamChannel) => {
-    setEditRow(t);
-    setEditLeagueProfileId(t.league_profile_id);
-    setEditEspnTeamId(t.espn_team_id);
-    setEditDispatcharrChannelId(String(t.dispatcharr_channel_id));
-    setEditAliases(t.aliases.join(", "));
-    setEditEnabled(t.enabled);
-    setEditDaSearch("");
-    setEditError(null);
-    setEditOpen(true);
-  };
+  const remove = useMutation({
+    mutationFn: api.deleteTeamChannel,
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["team-channels"] });
+      void qc.invalidateQueries({ queryKey: ["profiles"] });
+    },
+  });
 
-  if (profiles.isLoading || teams.isLoading) return <div className="text-[var(--color-muted)]">Loading…</div>;
+  // Build a map from profile id to profile for easy lookup
+  const profileMap = useMemo(() => {
+    const m = new Map<number, LeagueProfile>();
+    for (const p of profilesQ.data ?? []) m.set(p.id, p);
+    return m;
+  }, [profilesQ.data]);
+
+  // Filter channels
+  const filtered = useMemo(() => {
+    let items = channelsQ.data ?? [];
+    if (activeProfile !== "all") {
+      const pid = Number(activeProfile);
+      items = items.filter((c) => c.league_profile_id === pid);
+    }
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      items = items.filter(
+        (c) =>
+          c.team_name.toLowerCase().includes(term) ||
+          c.aliases.some((a) => a.toLowerCase().includes(term)),
+      );
+    }
+    return items;
+  }, [channelsQ.data, activeProfile, searchTerm]);
+
+  // Tab items
+  const tabItems = useMemo(
+    () => [
+      { id: "all", label: "All" },
+      ...(profilesQ.data ?? []).map((p) => ({
+        id: String(p.id),
+        label: p.name,
+      })),
+    ],
+    [profilesQ.data],
+  );
+
+  function openEdit(tc: TeamChannel) {
+    setEditForm({
+      league_profile_id: tc.league_profile_id,
+      espn_team_id: tc.espn_team_id,
+      espn_team_abbr: tc.espn_team_abbr,
+      team_name: tc.team_name,
+      dispatcharr_channel_id: String(tc.dispatcharr_channel_id),
+      aliases: tc.aliases.join(", "),
+      enabled: tc.enabled,
+    });
+    setEditChannelSearch("");
+    setEditId(tc.id);
+  }
+
+  function handleCreate() {
+    const aliases = form.aliases
+      .split(",")
+      .map((a) => a.trim())
+      .filter(Boolean);
+    create.mutate({
+      team_name: form.team_name,
+      espn_team_id: form.espn_team_id,
+      espn_team_abbr: form.espn_team_abbr,
+      league_profile_id: form.league_profile_id,
+      dispatcharr_channel_id: Number(form.dispatcharr_channel_id) || 0,
+      enabled: form.enabled,
+      aliases,
+    });
+  }
+
+  function handleUpdate() {
+    if (editId == null) return;
+    const aliases = editForm.aliases
+      .split(",")
+      .map((a) => a.trim())
+      .filter(Boolean);
+    update.mutate({
+      id: editId,
+      team_name: editForm.team_name,
+      espn_team_id: editForm.espn_team_id,
+      espn_team_abbr: editForm.espn_team_abbr,
+      league_profile_id: editForm.league_profile_id,
+      dispatcharr_channel_id: Number(editForm.dispatcharr_channel_id) || 0,
+      enabled: editForm.enabled,
+      aliases,
+    });
+  }
+
+  function selectTeam(team: EspnTeam, formSetter: (fn: (f: CreateForm) => CreateForm) => void) {
+    formSetter((f) => ({
+      ...f,
+      espn_team_id: team.id,
+      espn_team_abbr: team.abbreviation,
+      team_name: team.name,
+    }));
+  }
+
+  if (profilesQ.isLoading || channelsQ.isLoading)
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-10 w-full" />
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Skeleton key={i} className="h-36" />
+          ))}
+        </div>
+      </div>
+    );
 
   return (
-    <div className="space-y-8">
-      <header>
-        <h1 className="text-3xl font-semibold tracking-tight">Team channels</h1>
-        <p className="mt-1 text-sm text-[var(--color-muted)]">
-          Map a Dispatcharr channel to an ESPN team. The schedule comes from ESPN; stream titles are matched using your
-          league profile pattern.           Use the Dashboard “Check routing now” action to verify names and patterns against live Dispatcharr data.
-        </p>
+    <div className="space-y-6">
+      <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h1 className="text-2xl font-extrabold tracking-tight font-heading">
+            Team Channels
+          </h1>
+          <p className="mt-1 text-sm text-(--color-muted)">
+            Map ESPN teams to Dispatcharr channels.
+          </p>
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          onClick={() => setShowCreate(!showCreate)}
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Add Team
+        </Button>
       </header>
 
-      <Card>
-        <CardTitle>Add team channel</CardTitle>
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <div>
-            <Label>League profile</Label>
-            <select
-              className="w-full rounded-lg border border-[var(--color-card-border)] bg-black/30 px-3 py-2 text-sm"
-              value={leagueProfileId === "" ? "" : String(leagueProfileId)}
-              onChange={(e) => setLeagueProfileId(e.target.value ? Number(e.target.value) : "")}
-            >
-              <option value="">Select…</option>
-              {profiles.data?.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <Label>ESPN team</Label>
-            <select
-              className="w-full rounded-lg border border-[var(--color-card-border)] bg-black/30 px-3 py-2 text-sm"
-              disabled={!espnTeams.data?.length}
-              value={espnTeamId}
-              onChange={(e) => setEspnTeamId(e.target.value)}
-            >
-              {espnTeams.data?.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-            {espnTeams.isLoading && <p className="mt-1 text-xs text-[var(--color-muted)]">Loading teams…</p>}
-            {espnTeams.isError && <p className="mt-1 text-xs text-red-400">Could not load ESPN teams</p>}
-            {espnTeams.data && espnTeamId ? (
-              <p className="mt-2 rounded-lg bg-black/25 px-3 py-2 text-xs text-[var(--color-muted)]">
-                <span className="font-medium text-[var(--color-foreground)]">ESPN uses this name for schedules:</span>{" "}
-                {espnTeams.data.find((x) => x.id === espnTeamId)?.name ?? "—"} — match your pattern’s{" "}
-                <code className="font-mono">away</code>/<code className="font-mono">home</code> text to this (or add
-                aliases).
-              </p>
-            ) : null}
-          </div>
-          <div className="md:col-span-2 space-y-2">
-            <Label>Find Dispatcharr channel</Label>
-            <div className="flex gap-2">
-              <Input
-                value={daSearch}
-                onChange={(e) => setDaSearch(e.target.value)}
-                placeholder="Search by name…"
-                className="flex-1"
-              />
-              <span className="inline-flex items-center text-[var(--color-muted)]">
-                <Search className="h-4 w-4" />
-              </span>
+      {/* Filter bar */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <Tabs
+          value={activeProfile}
+          onChange={setActiveProfile}
+          items={tabItems}
+          className="flex-1 min-w-0"
+        />
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-(--color-muted)" />
+          <Input
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Filter teams..."
+            className="pl-9"
+            inputSize="sm"
+          />
+        </div>
+      </div>
+
+      {/* Create panel */}
+      {showCreate && (
+        <Card>
+          <h3 className="text-base font-extrabold font-heading">Add Team Mapping</h3>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <div>
+              <Label>League Profile</Label>
+              <select
+                className="w-full rounded-(--radius-md) border border-(--color-border) bg-(--color-surface) px-3 py-2 text-sm text-(--color-foreground)"
+                value={form.league_profile_id}
+                onChange={(e) =>
+                  setForm({ ...form, league_profile_id: +e.target.value })
+                }
+              >
+                {profilesQ.data?.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
             </div>
-            {daChannels.isError && (
-              <p className="text-xs text-[var(--color-danger)]">
-                Could not load channels. Configure Dispatcharr in Settings or enter an ID manually.
-              </p>
-            )}
-            {daChannels.data && daChannels.data.length > 0 && (
-              <ul className="max-h-36 overflow-y-auto rounded-lg border border-white/10 bg-black/20 text-xs">
-                {daChannels.data.slice(0, 50).map((c, i) => (
-                  <li key={i}>
+            <div>
+              <Label>ESPN Team</Label>
+              <div className="flex items-center gap-2">
+                {form.espn_team_id && selectedProfile && (
+                  <TeamLogo
+                    league={selectedProfile.espn_league}
+                    abbreviation={form.espn_team_abbr}
+                    espnTeamId={form.espn_team_id}
+                    teamName={form.team_name}
+                    size={32}
+                  />
+                )}
+                <select
+                  className="w-full rounded-(--radius-md) border border-(--color-border) bg-(--color-surface) px-3 py-2 text-sm text-(--color-foreground)"
+                  value={form.espn_team_id}
+                  onChange={(e) => {
+                    const team = espnTeamsQ.data?.find(
+                      (t) => t.id === e.target.value,
+                    );
+                    if (team) selectTeam(team, setForm);
+                  }}
+                >
+                  <option value="">Select a team...</option>
+                  {espnTeamsQ.data?.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} ({t.abbreviation})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div>
+              <Label>Dispatcharr Channel</Label>
+              <Input
+                placeholder="Search channels..."
+                value={channelSearch}
+                onChange={(e) => setChannelSearch(e.target.value)}
+                inputSize="sm"
+              />
+              {dispatcharrQ.data && channelSearch && (
+                <div className="mt-1 max-h-40 overflow-y-auto rounded-(--radius-md) border border-(--color-border) bg-(--color-surface)">
+                  {dispatcharrQ.data.map((ch) => (
                     <button
+                      key={String(ch.id)}
                       type="button"
-                      className="w-full px-3 py-2 text-left hover:bg-white/10"
+                      className="flex w-full items-center gap-2 px-3 py-1.5 text-xs hover:bg-(--color-surface-raised) text-left cursor-pointer"
                       onClick={() => {
-                        const id = c.id ?? c.pk;
-                        setDispatcharrChannelId(String(id ?? ""));
+                        setForm({
+                          ...form,
+                          dispatcharr_channel_id: String(ch.id),
+                        });
+                        setChannelSearch(String(ch.name ?? ch.id));
                       }}
                     >
-                      {channelRowLabel(c)}
+                      <span className="text-(--color-foreground)">{String(ch.name ?? ch.id)}</span>
+                      <span className="text-(--color-muted)">#{String(ch.id)}</span>
                     </button>
-                  </li>
-                ))}
-              </ul>
-            )}
+                  ))}
+                </div>
+              )}
+              {form.dispatcharr_channel_id && (
+                <p className="mt-1 text-xs text-(--color-muted)">
+                  Channel ID: <span className="font-mono text-(--color-foreground)">{form.dispatcharr_channel_id}</span>
+                </p>
+              )}
+            </div>
+            <div>
+              <Label>Aliases</Label>
+              <Input
+                value={form.aliases}
+                onChange={(e) => setForm({ ...form, aliases: e.target.value })}
+                placeholder="Comma-separated aliases"
+                inputSize="sm"
+              />
+              <AliasesFieldHelp />
+            </div>
+            <div className="md:col-span-2 flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                disabled={
+                  create.isPending ||
+                  !form.team_name ||
+                  !form.dispatcharr_channel_id
+                }
+                onClick={handleCreate}
+              >
+                {create.isPending ? "Creating..." : "Create Mapping"}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowCreate(false)}
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
-          <div>
-            <Label>Dispatcharr channel ID</Label>
-            <Input
-              value={dispatcharrChannelId}
-              onChange={(e) => setDispatcharrChannelId(e.target.value)}
-              placeholder="e.g. 42"
-              inputMode="numeric"
-            />
-            <p className="mt-1 text-xs text-[var(--color-muted)]">Set manually or pick from search results above.</p>
-          </div>
-          <div className="md:col-span-2">
-            <Label>Aliases (comma-separated, optional)</Label>
-            <Input value={aliases} onChange={(e) => setAliases(e.target.value)} placeholder="Twins, Minnesota" />
-            <AliasesFieldHelp />
-          </div>
-        </div>
-        <div className="mt-4 flex justify-end">
-          <Button
-            type="button"
-            onClick={() => create.mutate()}
-            disabled={create.isPending || !profile || !dispatcharrChannelId}
-          >
-            <Plus className="h-4 w-4" />
-            Add mapping
-          </Button>
-        </div>
-      </Card>
+        </Card>
+      )}
 
-      <Card>
-        <CardTitle>Current mappings</CardTitle>
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="text-[var(--color-muted)]">
-                <th className="pb-2 pr-4">Team</th>
-                <th className="pb-2 pr-4">ESPN ID</th>
-                <th className="pb-2 pr-4">Profile</th>
-                <th className="pb-2 pr-4">Dispatcharr ch.</th>
-                <th className="pb-2 pr-4">On</th>
-                <th className="pb-2" />
-              </tr>
-            </thead>
-            <tbody>
-              {teams.data?.map((t) => (
-                <tr key={t.id} className="border-t border-white/5">
-                  <td className="py-2 pr-4 font-medium">{t.team_name}</td>
-                  <td className="py-2 pr-4 font-mono text-xs">{t.espn_team_id}</td>
-                  <td className="py-2 pr-4">{profiles.data?.find((p) => p.id === t.league_profile_id)?.name ?? t.league_profile_id}</td>
-                  <td className="py-2 pr-4 font-mono">{t.dispatcharr_channel_id}</td>
-                  <td className="py-2 pr-4 text-xs">{t.enabled ? "Yes" : "No"}</td>
-                  <td className="py-2 text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button type="button" variant="ghost" onClick={() => openEdit(t)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button type="button" variant="danger" onClick={() => remove.mutate(t.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {!teams.data?.length && <p className="text-sm text-[var(--color-muted)]">No mappings yet.</p>}
-        </div>
-      </Card>
-
-      <Dialog
-        open={editOpen}
-        onClose={() => {
-          if (!update.isPending) {
-            setEditOpen(false);
-            setEditRow(null);
-            setEditError(null);
+      {/* Team cards grid */}
+      {filtered.length === 0 ? (
+        <EmptyState
+          icon={Users}
+          title="No team mappings"
+          description={
+            searchTerm || activeProfile !== "all"
+              ? "No teams match your filter."
+              : "Add a team mapping to start routing Dispatcharr channels."
           }
-        }}
-        title="Edit team channel"
-        className="max-w-2xl"
+          action={
+            !showCreate ? (
+              <Button size="sm" onClick={() => setShowCreate(true)}>
+                <Plus className="h-3.5 w-3.5" /> Add Team
+              </Button>
+            ) : undefined
+          }
+        />
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {filtered.map((tc) => {
+            const profile = profileMap.get(tc.league_profile_id);
+            return (
+              <Card
+                key={tc.id}
+                colorAccent={undefined}
+                className="group relative flex flex-col"
+              >
+                <div className="flex items-start gap-3">
+                  <TeamLogo
+                    league={profile?.espn_league ?? ""}
+                    abbreviation={tc.espn_team_abbr}
+                    espnTeamId={tc.espn_team_id}
+                    teamName={tc.team_name}
+                    size={40}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-semibold truncate">
+                        {tc.team_name}
+                      </h3>
+                      <StatusDot
+                        status={tc.enabled ? "online" : "offline"}
+                      />
+                    </div>
+                    {profile && (
+                      <div className="flex items-center gap-1.5">
+                        <LeagueBadge league={profile.espn_league} size={14} />
+                        <p className="text-xs text-(--color-muted)">
+                          {profile.name}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-3 flex items-center gap-2 text-xs text-(--color-muted)">
+                  <Link2 className="h-3 w-3" />
+                  <span>
+                    Channel{" "}
+                    <span className="font-mono text-(--color-foreground)">
+                      {tc.dispatcharr_channel_id}
+                    </span>
+                  </span>
+                </div>
+
+                {tc.aliases.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {tc.aliases.map((alias) => (
+                      <Badge key={alias} variant="muted">
+                        {alias}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+
+                {/* Hover actions */}
+                <div className="mt-auto flex justify-end gap-1 pt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    type="button"
+                    onClick={() => openEdit(tc)}
+                    className="rounded-(--radius-sm) p-1.5 text-(--color-muted) hover:bg-(--color-surface-raised) hover:text-(--color-foreground) transition-colors cursor-pointer"
+                    aria-label="Edit"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (confirm(`Delete "${tc.team_name}"?`))
+                        remove.mutate(tc.id);
+                    }}
+                    className="rounded-(--radius-sm) p-1.5 text-(--color-muted) hover:bg-(--color-danger)/10 hover:text-(--color-danger) transition-colors cursor-pointer"
+                    aria-label="Delete"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Edit dialog */}
+      <Dialog
+        open={editId !== null}
+        onClose={() => setEditId(null)}
+        title="Edit Team Mapping"
+        variant="panel"
       >
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4">
+          <div className="flex items-center gap-3">
+            <Label className="mb-0">Enabled</Label>
+            <Toggle
+              checked={editForm.enabled}
+              onChange={(v) => setEditForm({ ...editForm, enabled: v })}
+            />
+          </div>
           <div>
-            <Label>League profile</Label>
+            <Label>League Profile</Label>
             <select
-              className="w-full rounded-lg border border-[var(--color-card-border)] bg-black/30 px-3 py-2 text-sm"
-              value={editLeagueProfileId === "" ? "" : String(editLeagueProfileId)}
-              onChange={(e) => setEditLeagueProfileId(e.target.value ? Number(e.target.value) : "")}
+              className="w-full rounded-(--radius-md) border border-(--color-border) bg-(--color-surface) px-3 py-2 text-sm text-(--color-foreground)"
+              value={editForm.league_profile_id}
+              onChange={(e) =>
+                setEditForm({
+                  ...editForm,
+                  league_profile_id: +e.target.value,
+                })
+              }
             >
-              {profiles.data?.map((p) => (
+              {profilesQ.data?.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
                 </option>
@@ -349,107 +553,109 @@ export function TeamChannelsPage() {
             </select>
           </div>
           <div>
-            <Label>ESPN team</Label>
-            <select
-              className="w-full rounded-lg border border-[var(--color-card-border)] bg-black/30 px-3 py-2 text-sm"
-              disabled={!editEspnTeams.data?.length}
-              value={editEspnTeamId}
-              onChange={(e) => setEditEspnTeamId(e.target.value)}
-            >
-              {editEspnTeams.data?.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-            {editEspnTeams.isLoading && <p className="mt-1 text-xs text-[var(--color-muted)]">Loading teams…</p>}
-            {editEspnTeams.isError && <p className="mt-1 text-xs text-red-400">Could not load ESPN teams</p>}
-            {editEspnTeams.data && editEspnTeamId ? (
-              <p className="mt-2 rounded-lg bg-black/25 px-3 py-2 text-xs text-[var(--color-muted)]">
-                <span className="font-medium text-[var(--color-foreground)]">ESPN schedule name:</span>{" "}
-                {editEspnTeams.data.find((x) => x.id === editEspnTeamId)?.name ?? "—"}
-              </p>
-            ) : null}
-          </div>
-          <div className="md:col-span-2 space-y-2">
-            <Label>Find Dispatcharr channel</Label>
-            <div className="flex gap-2">
-              <Input
-                value={editDaSearch}
-                onChange={(e) => setEditDaSearch(e.target.value)}
-                placeholder="Search by name…"
-                className="flex-1"
-              />
-            </div>
-            {editDaChannels.isError && (
-              <p className="text-xs text-[var(--color-danger)]">Could not load channels from Dispatcharr.</p>
-            )}
-            {editDaChannels.data && editDaChannels.data.length > 0 && (
-              <ul className="max-h-36 overflow-y-auto rounded-lg border border-white/10 bg-black/20 text-xs">
-                {editDaChannels.data.slice(0, 50).map((c, i) => (
-                  <li key={i}>
-                    <button
-                      type="button"
-                      className="w-full px-3 py-2 text-left hover:bg-white/10"
-                      onClick={() => {
-                        const id = c.id ?? c.pk;
-                        setEditDispatcharrChannelId(String(id ?? ""));
-                      }}
-                    >
-                      {channelRowLabel(c)}
-                    </button>
-                  </li>
+            <Label>ESPN Team</Label>
+            <div className="flex items-center gap-2">
+              {editForm.espn_team_id && editProfile && (
+                <TeamLogo
+                  league={editProfile.espn_league}
+                  abbreviation={editForm.espn_team_abbr}
+                  espnTeamId={editForm.espn_team_id}
+                  teamName={editForm.team_name}
+                  size={32}
+                />
+              )}
+              <select
+                className="w-full rounded-(--radius-md) border border-(--color-border) bg-(--color-surface) px-3 py-2 text-sm text-(--color-foreground)"
+                value={editForm.espn_team_id}
+                onChange={(e) => {
+                  const team = editEspnTeamsQ.data?.find(
+                    (t) => t.id === e.target.value,
+                  );
+                  if (team) selectTeam(team, setEditForm);
+                }}
+              >
+                <option value="">Select a team...</option>
+                {editEspnTeamsQ.data?.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} ({t.abbreviation})
+                  </option>
                 ))}
-              </ul>
-            )}
+              </select>
+            </div>
           </div>
           <div>
-            <Label>Dispatcharr channel ID</Label>
+            <Label>Dispatcharr Channel ID</Label>
             <Input
-              value={editDispatcharrChannelId}
-              onChange={(e) => setEditDispatcharrChannelId(e.target.value)}
-              inputMode="numeric"
+              value={editForm.dispatcharr_channel_id}
+              onChange={(e) =>
+                setEditForm({
+                  ...editForm,
+                  dispatcharr_channel_id: e.target.value,
+                })
+              }
+              className="font-mono"
+              inputSize="sm"
             />
+            <div className="mt-1">
+              <Input
+                placeholder="Search channels..."
+                value={editChannelSearch}
+                onChange={(e) => setEditChannelSearch(e.target.value)}
+                inputSize="sm"
+              />
+              {editDispatcharrQ.data && editChannelSearch && (
+                <div className="mt-1 max-h-40 overflow-y-auto rounded-(--radius-md) border border-(--color-border) bg-(--color-surface)">
+                  {editDispatcharrQ.data.map((ch) => (
+                    <button
+                      key={String(ch.id)}
+                      type="button"
+                      className="flex w-full items-center gap-2 px-3 py-1.5 text-xs hover:bg-(--color-surface-raised) text-left cursor-pointer"
+                      onClick={() => {
+                        setEditForm({
+                          ...editForm,
+                          dispatcharr_channel_id: String(ch.id),
+                        });
+                        setEditChannelSearch(String(ch.name ?? ch.id));
+                      }}
+                    >
+                      <span className="text-(--color-foreground)">{String(ch.name ?? ch.id)}</span>
+                      <span className="text-(--color-muted)">#{String(ch.id)}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-          <div className="md:col-span-2">
-            <Label>Aliases (comma-separated)</Label>
-            <Input value={editAliases} onChange={(e) => setEditAliases(e.target.value)} />
+          <div>
+            <Label>Aliases</Label>
+            <Input
+              value={editForm.aliases}
+              onChange={(e) =>
+                setEditForm({ ...editForm, aliases: e.target.value })
+              }
+              placeholder="Comma-separated"
+              inputSize="sm"
+            />
             <AliasesFieldHelp />
           </div>
-          <div className="md:col-span-2 flex items-center gap-2">
-            <input
-              id="edit-tc-enabled"
-              type="checkbox"
-              className="h-4 w-4 rounded border-white/20"
-              checked={editEnabled}
-              onChange={(e) => setEditEnabled(e.target.checked)}
-            />
-            <Label htmlFor="edit-tc-enabled" className="cursor-pointer">
-              Enabled (tracked)
-            </Label>
+          <div className="flex gap-2 pt-2">
+            <Button
+              type="button"
+              size="sm"
+              disabled={update.isPending}
+              onClick={handleUpdate}
+            >
+              {update.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setEditId(null)}
+            >
+              Cancel
+            </Button>
           </div>
-        </div>
-        {editError && <p className="mt-3 text-sm text-[var(--color-danger)]">{editError}</p>}
-        <div className="mt-4 flex justify-end gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => {
-              setEditOpen(false);
-              setEditRow(null);
-              setEditError(null);
-            }}
-            disabled={update.isPending}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            onClick={() => update.mutate()}
-            disabled={update.isPending || !editDispatcharrChannelId}
-          >
-            {update.isPending ? "Saving…" : "Save"}
-          </Button>
         </div>
       </Dialog>
     </div>

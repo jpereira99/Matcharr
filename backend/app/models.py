@@ -51,6 +51,7 @@ class LeagueProfileOut(BaseModel):
 class TeamChannelCreate(BaseModel):
     team_name: str
     espn_team_id: str
+    espn_team_abbr: str = ""
     league_profile_id: int
     dispatcharr_channel_id: int
     enabled: bool = True
@@ -60,6 +61,7 @@ class TeamChannelCreate(BaseModel):
 class TeamChannelUpdate(BaseModel):
     team_name: str | None = None
     espn_team_id: str | None = None
+    espn_team_abbr: str | None = None
     league_profile_id: int | None = None
     dispatcharr_channel_id: int | None = None
     enabled: bool | None = None
@@ -70,6 +72,7 @@ class TeamChannelOut(BaseModel):
     id: int
     team_name: str
     espn_team_id: str
+    espn_team_abbr: str
     league_profile_id: int
     dispatcharr_channel_id: int
     enabled: bool

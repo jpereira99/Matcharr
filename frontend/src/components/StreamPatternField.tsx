@@ -46,10 +46,10 @@ export function StreamPatternField({ value, onChange, idSuffix = "", compactHelp
 
   return (
     <div className="md:col-span-2">
-      <div className="overflow-hidden rounded-xl border border-[var(--color-card-border)] bg-black/25">
+      <div className="overflow-hidden rounded-(--radius-lg) border border-(--color-border) bg-(--color-surface)">
         <div className="p-4">
           <Label htmlFor={patternId}>Pattern</Label>
-          <p className="mt-1 text-xs leading-relaxed text-[var(--color-muted)]">
+          <p className="mt-1 text-xs leading-relaxed text-(--color-muted)">
             Paste a title from Dispatcharr, select the text to capture, then insert a token below.
           </p>
           <Input
@@ -66,9 +66,9 @@ export function StreamPatternField({ value, onChange, idSuffix = "", compactHelp
           />
         </div>
 
-        <div className="border-t border-white/[0.08] bg-black/20 px-4 py-3">
+        <div className="border-t border-(--color-border) bg-(--color-surface-raised) px-4 py-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-            <span className="shrink-0 text-[10px] font-medium uppercase tracking-wider text-[var(--color-muted)]">
+            <span className="shrink-0 text-[10px] font-medium uppercase tracking-wider text-(--color-muted)">
               Insert
             </span>
             <div className="flex min-w-0 flex-1 flex-wrap gap-1.5">
@@ -78,10 +78,9 @@ export function StreamPatternField({ value, onChange, idSuffix = "", compactHelp
                   type="button"
                   onClick={() => applyPlaceholder(token)}
                   className={cn(
-                    "rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 font-mono text-[11px] leading-none",
-                    "text-[var(--color-accent)] transition-colors",
-                    "hover:border-white/15 hover:bg-white/[0.08]",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]/35",
+                    "rounded-(--radius-sm) border border-(--color-border) bg-(--color-surface) px-2 py-1 font-mono text-[11px] leading-none cursor-pointer",
+                    "text-(--color-accent) transition-colors",
+                    "hover:border-(--color-accent)/30 hover:bg-(--color-accent)/5",
                   )}
                 >
                   {token}
@@ -93,7 +92,7 @@ export function StreamPatternField({ value, onChange, idSuffix = "", compactHelp
             <p
               className={cn(
                 "mt-2 text-xs",
-                hint.startsWith("Replaced") ? "text-[var(--color-muted)]" : "text-amber-400/90",
+                hint.startsWith("Replaced") ? "text-(--color-muted)" : "text-(--color-warning)",
               )}
             >
               {hint}
@@ -102,30 +101,30 @@ export function StreamPatternField({ value, onChange, idSuffix = "", compactHelp
         </div>
 
         {!compactHelp && (
-          <div className="border-t border-white/[0.08] px-4 py-3">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-[var(--color-muted)]">Example</p>
-            <p className="mt-1.5 text-xs text-[var(--color-muted)]">
-              <code className="break-all rounded bg-black/40 px-1.5 py-0.5 font-mono text-[10px] text-[var(--color-foreground)] sm:text-[11px]">
+          <div className="border-t border-(--color-border) px-4 py-3">
+            <p className="text-[10px] font-medium uppercase tracking-wider text-(--color-muted)">Example</p>
+            <p className="mt-1.5 text-xs text-(--color-muted)">
+              <code className="break-all rounded-(--radius-sm) bg-(--color-surface-raised) px-1.5 py-0.5 font-mono text-[10px] text-(--color-foreground) sm:text-[11px]">
                 MLB {"{n}"} | {"{away}"} x {"{home}"} start:{"{time}"}
               </code>
             </p>
           </div>
         )}
         {compactHelp && (
-          <div className="border-t border-white/[0.08] px-4 py-3">
-            <p className="text-xs text-[var(--color-muted)]">
-              Use <code className="font-mono text-[var(--color-foreground)]">{"{away}"}</code> and{" "}
-              <code className="font-mono text-[var(--color-foreground)]">{"{home}"}</code> where team names appear.
+          <div className="border-t border-(--color-border) px-4 py-3">
+            <p className="text-xs text-(--color-muted)">
+              Use <code className="font-mono text-(--color-foreground)">{"{away}"}</code> and{" "}
+              <code className="font-mono text-(--color-foreground)">{"{home}"}</code> where team names appear.
             </p>
           </div>
         )}
 
-        <details className="group border-t border-white/[0.08]">
-          <summary className="flex cursor-pointer list-none items-center gap-1.5 px-4 py-3 text-xs font-medium text-[var(--color-foreground)] transition hover:bg-white/[0.03] [&::-webkit-details-marker]:hidden">
-            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[var(--color-muted)] transition-transform group-open:rotate-90" aria-hidden />
+        <details className="group border-t border-(--color-border)">
+          <summary className="flex cursor-pointer list-none items-center gap-1.5 px-4 py-3 text-xs font-medium text-(--color-foreground) transition hover:bg-(--color-surface-raised) [&::-webkit-details-marker]:hidden">
+            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-(--color-muted) transition-transform group-open:rotate-90" aria-hidden />
             Placeholder reference
           </summary>
-          <div className="border-t border-white/[0.06] bg-black/15 px-4 pb-4 pt-1">
+          <div className="border-t border-(--color-border) bg-(--color-surface-raised) px-4 pb-4 pt-1">
             <PatternPlaceholderTable />
           </div>
         </details>
