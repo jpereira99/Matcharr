@@ -4,13 +4,7 @@
  */
 
 /** Pro / WNBA leagues: filename is lowercase team abbreviation. */
-const ABBR_LOGO_LEAGUES = new Set([
-  "mlb",
-  "nfl",
-  "nba",
-  "nhl",
-  "wnba",
-]);
+const ABBR_LOGO_LEAGUES = new Set(["mlb", "nfl", "nba", "nhl", "wnba"]);
 
 /**
  * Maps `espn_league` (API league slug) → CDN folder under /i/teamlogos/{folder}/500/...

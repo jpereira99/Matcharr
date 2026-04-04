@@ -32,10 +32,11 @@ async def dashboard() -> DashboardOut:
         tracked_by_league: dict[int, dict[str, str]] = {}
         for row in await cur.fetchall():
             lp = int(row["league_profile_id"])
-            tracked_by_league.setdefault(lp, {})[str(row["espn_team_id"])] = str(row["team_name"])
+            tracked_by_league.setdefault(lp, {})[str(row["espn_team_id"])] = str(
+                row["team_name"]
+            )
 
-        cur = await db.execute(
-            """
+        cur = await db.execute("""
             SELECT sc.*, lp.name AS league_name
             FROM schedule_cache sc
             JOIN league_profiles lp ON lp.id = sc.league_profile_id
@@ -46,8 +47,7 @@ async def dashboard() -> DashboardOut:
             AND sc.status != 'post'
             AND datetime(sc.game_time) >= datetime('now', '-6 hours')
             ORDER BY datetime(sc.game_time)
-            """
-        )
+            """)
         games_raw = await cur.fetchall()
         upcoming: list[dict[str, Any]] = []
         seen: set[str] = set()
@@ -89,7 +89,9 @@ async def dashboard() -> DashboardOut:
             extra_by_lp[int(g["league_profile_id"])].append(g)
 
         extra_leagues: list[dict[str, Any]] = []
-        for lp_id in sorted(extra_by_lp.keys(), key=lambda x: (extra_by_lp[x][0].get("game_time") or "")):
+        for lp_id in sorted(
+            extra_by_lp.keys(), key=lambda x: (extra_by_lp[x][0].get("game_time") or "")
+        ):
             games = extra_by_lp[lp_id]
             league_name = str(games[0].get("league") or "")
             extra_leagues.append(
@@ -100,15 +102,13 @@ async def dashboard() -> DashboardOut:
                 }
             )
 
-        cur = await db.execute(
-            """
+        cur = await db.execute("""
             SELECT sl.*, tc.team_name
             FROM switch_log sl
             LEFT JOIN team_channels tc ON tc.id = sl.team_channel_id
             ORDER BY sl.switched_at DESC
             LIMIT 20
-            """
-        )
+            """)
         logs = [dict(x) for x in await cur.fetchall()]
 
         last_refresh = await kv_get(db, "last_schedule_refresh")
@@ -127,7 +127,9 @@ async def dashboard() -> DashboardOut:
         da_ok, _, _ = await client.test_connection()
 
     return DashboardOut(
-        dispatcharr_configured=bool(settings.dispatcharr_url and settings.dispatcharr_token),
+        dispatcharr_configured=bool(
+            settings.dispatcharr_url and settings.dispatcharr_token
+        ),
         next_scan_at=next_s,
         tracked_teams=int(tracked),
         upcoming_games=tracked_rows[:50],

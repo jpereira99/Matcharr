@@ -14,7 +14,7 @@ export function Label({
     <label
       htmlFor={htmlFor}
       className={cn(
-        "mb-1 block text-xs font-medium uppercase tracking-wide text-(--color-muted)",
+        "mb-1 block text-xs font-medium tracking-wide text-(--color-muted) uppercase",
         className,
       )}
     >

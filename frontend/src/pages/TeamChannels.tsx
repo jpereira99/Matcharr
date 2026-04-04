@@ -228,7 +228,10 @@ export function TeamChannelsPage() {
     });
   }
 
-  function selectTeam(team: EspnTeam, formSetter: (fn: (f: CreateForm) => CreateForm) => void) {
+  function selectTeam(
+    team: EspnTeam,
+    formSetter: (fn: (f: CreateForm) => CreateForm) => void,
+  ) {
     formSetter((f) => ({
       ...f,
       espn_team_id: team.id,
@@ -254,7 +257,7 @@ export function TeamChannelsPage() {
     <div className="space-y-6">
       <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight font-heading">
+          <h1 className="font-heading text-2xl font-extrabold tracking-tight">
             Team Channels
           </h1>
           <p className="mt-1 text-sm text-(--color-muted)">
@@ -277,10 +280,10 @@ export function TeamChannelsPage() {
           value={activeProfile}
           onChange={setActiveProfile}
           items={tabItems}
-          className="flex-1 min-w-0"
+          className="min-w-0 flex-1"
         />
         <div className="relative w-full sm:w-64">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-(--color-muted)" />
+          <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-(--color-muted)" />
           <Input
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -294,7 +297,9 @@ export function TeamChannelsPage() {
       {/* Create panel */}
       {showCreate && (
         <Card>
-          <h3 className="text-base font-extrabold font-heading">Add Team Mapping</h3>
+          <h3 className="font-heading text-base font-extrabold">
+            Add Team Mapping
+          </h3>
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <div>
               <Label>League Profile</Label>
@@ -357,7 +362,7 @@ export function TeamChannelsPage() {
                     <button
                       key={String(ch.id)}
                       type="button"
-                      className="flex w-full items-center gap-2 px-3 py-1.5 text-xs hover:bg-(--color-surface-raised) text-left cursor-pointer"
+                      className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-(--color-surface-raised)"
                       onClick={() => {
                         setForm({
                           ...form,
@@ -366,15 +371,22 @@ export function TeamChannelsPage() {
                         setChannelSearch(String(ch.name ?? ch.id));
                       }}
                     >
-                      <span className="text-(--color-foreground)">{String(ch.name ?? ch.id)}</span>
-                      <span className="text-(--color-muted)">#{String(ch.id)}</span>
+                      <span className="text-(--color-foreground)">
+                        {String(ch.name ?? ch.id)}
+                      </span>
+                      <span className="text-(--color-muted)">
+                        #{String(ch.id)}
+                      </span>
                     </button>
                   ))}
                 </div>
               )}
               {form.dispatcharr_channel_id && (
                 <p className="mt-1 text-xs text-(--color-muted)">
-                  Channel ID: <span className="font-mono text-(--color-foreground)">{form.dispatcharr_channel_id}</span>
+                  Channel ID:{" "}
+                  <span className="font-mono text-(--color-foreground)">
+                    {form.dispatcharr_channel_id}
+                  </span>
                 </p>
               )}
             </div>
@@ -388,7 +400,7 @@ export function TeamChannelsPage() {
               />
               <AliasesFieldHelp />
             </div>
-            <div className="md:col-span-2 flex gap-2">
+            <div className="flex gap-2 md:col-span-2">
               <Button
                 type="button"
                 size="sm"
@@ -452,12 +464,10 @@ export function TeamChannelsPage() {
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-semibold truncate">
+                      <h3 className="truncate text-sm font-semibold">
                         {tc.team_name}
                       </h3>
-                      <StatusDot
-                        status={tc.enabled ? "online" : "offline"}
-                      />
+                      <StatusDot status={tc.enabled ? "online" : "offline"} />
                     </div>
                     {profile && (
                       <div className="flex items-center gap-1.5">
@@ -491,11 +501,11 @@ export function TeamChannelsPage() {
                 )}
 
                 {/* Hover actions */}
-                <div className="mt-auto flex justify-end gap-1 pt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="mt-auto flex justify-end gap-1 pt-3 opacity-0 transition-opacity group-hover:opacity-100">
                   <button
                     type="button"
                     onClick={() => openEdit(tc)}
-                    className="rounded-(--radius-sm) p-1.5 text-(--color-muted) hover:bg-(--color-surface-raised) hover:text-(--color-foreground) transition-colors cursor-pointer"
+                    className="cursor-pointer rounded-(--radius-sm) p-1.5 text-(--color-muted) transition-colors hover:bg-(--color-surface-raised) hover:text-(--color-foreground)"
                     aria-label="Edit"
                   >
                     <Pencil className="h-3.5 w-3.5" />
@@ -506,7 +516,7 @@ export function TeamChannelsPage() {
                       if (confirm(`Delete "${tc.team_name}"?`))
                         remove.mutate(tc.id);
                     }}
-                    className="rounded-(--radius-sm) p-1.5 text-(--color-muted) hover:bg-(--color-danger)/10 hover:text-(--color-danger) transition-colors cursor-pointer"
+                    className="cursor-pointer rounded-(--radius-sm) p-1.5 text-(--color-muted) transition-colors hover:bg-(--color-danger)/10 hover:text-(--color-danger)"
                     aria-label="Delete"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -609,7 +619,7 @@ export function TeamChannelsPage() {
                     <button
                       key={String(ch.id)}
                       type="button"
-                      className="flex w-full items-center gap-2 px-3 py-1.5 text-xs hover:bg-(--color-surface-raised) text-left cursor-pointer"
+                      className="flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-(--color-surface-raised)"
                       onClick={() => {
                         setEditForm({
                           ...editForm,
@@ -618,8 +628,12 @@ export function TeamChannelsPage() {
                         setEditChannelSearch(String(ch.name ?? ch.id));
                       }}
                     >
-                      <span className="text-(--color-foreground)">{String(ch.name ?? ch.id)}</span>
-                      <span className="text-(--color-muted)">#{String(ch.id)}</span>
+                      <span className="text-(--color-foreground)">
+                        {String(ch.name ?? ch.id)}
+                      </span>
+                      <span className="text-(--color-muted)">
+                        #{String(ch.id)}
+                      </span>
                     </button>
                   ))}
                 </div>

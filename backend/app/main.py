@@ -13,7 +13,16 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import ensure_data_dir, get_settings
 from app.database import get_db, init_db
-from app.routers import channels, dashboard, dispatcharr_proxy, espn_data, logs, profiles, routing_preview, run
+from app.routers import (
+    channels,
+    dashboard,
+    dispatcharr_proxy,
+    espn_data,
+    logs,
+    profiles,
+    routing_preview,
+    run,
+)
 from app.routers import settings as settings_router
 from app.services.scheduler import schedule_match_cycle, scheduler
 from app.settings_store import load_settings

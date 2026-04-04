@@ -22,7 +22,9 @@ async def _client() -> DispatcharrClient:
 
 
 @router.get("/channels")
-async def da_channels(search: str = Query("", description="Search filter")) -> list[dict[str, Any]]:
+async def da_channels(
+    search: str = Query("", description="Search filter")
+) -> list[dict[str, Any]]:
     client = await _client()
     try:
         return await client.list_channels(search=search)
@@ -31,7 +33,9 @@ async def da_channels(search: str = Query("", description="Search filter")) -> l
 
 
 @router.get("/streams")
-async def da_streams(name: str = Query("", description="Name contains filter")) -> list[dict[str, Any]]:
+async def da_streams(
+    name: str = Query("", description="Name contains filter")
+) -> list[dict[str, Any]]:
     client = await _client()
     try:
         return await client.list_streams(name_contains=name)

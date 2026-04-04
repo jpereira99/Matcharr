@@ -15,4 +15,6 @@ router = APIRouter(tags=["run"])
 async def run_now() -> ManualRunResponse:
     async with get_db() as db:
         result = await run_match_cycle(db, force_schedule_refresh=True)
-    return ManualRunResponse(ok=bool(result.get("ok")), message=result.get("message", ""))
+    return ManualRunResponse(
+        ok=bool(result.get("ok")), message=result.get("message", "")
+    )

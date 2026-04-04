@@ -15,7 +15,9 @@ export function storePreference(pref: ThemePreference) {
 
 export function resolveTheme(pref: ThemePreference): ResolvedTheme {
   if (pref === "system") {
-    return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    return window.matchMedia("(prefers-color-scheme: light)").matches
+      ? "light"
+      : "dark";
   }
   return pref;
 }

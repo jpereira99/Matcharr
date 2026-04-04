@@ -79,9 +79,7 @@ class DispatcharrClient:
         auth_hint = (
             "Authorization: Bearer <jwt>"
             if scheme == "bearer_jwt"
-            else "Authorization: ApiKey <key>"
-            if scheme == "api_key"
-            else "(no token)"
+            else "Authorization: ApiKey <key>" if scheme == "api_key" else "(no token)"
         )
         out: dict[str, Any] = {
             "request_url": request_url,
@@ -113,7 +111,9 @@ class DispatcharrClient:
         url = f"{self.base_url}/api/channels/channels/"
         try:
             async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
-                r = await client.get(url, headers=self._headers(), params={"page_size": 1})
+                r = await client.get(
+                    url, headers=self._headers(), params={"page_size": 1}
+                )
         except Exception as e:
             detail = self._test_failure_detail(request_url=url, response=None, exc=e)
             logger.warning(
@@ -131,7 +131,11 @@ class DispatcharrClient:
             logger.warning(
                 "Dispatcharr returned 401 for GET %s — check token and Dispatcharr API auth settings. %s",
                 url,
-                {k: v for k, v in detail.items() if k not in ("response_preview", "dispatcharr_api_error")},
+                {
+                    k: v
+                    for k, v in detail.items()
+                    if k not in ("response_preview", "dispatcharr_api_error")
+                },
             )
             if detail.get("response_preview"):
                 logger.warning(
@@ -155,7 +159,9 @@ class DispatcharrClient:
             return False, f"HTTP {r.status_code}", detail
         return True, "OK", None
 
-    async def list_streams(self, name_contains: str = "", page_size: int = 500) -> list[dict[str, Any]]:
+    async def list_streams(
+        self, name_contains: str = "", page_size: int = 500
+    ) -> list[dict[str, Any]]:
         base = f"{self.base_url}/api/channels/streams/"
         params: dict[str, Any] = {"page_size": page_size}
         if name_contains:
@@ -185,7 +191,9 @@ class DispatcharrClient:
                 params = None
         return all_rows
 
-    async def list_channels(self, search: str = "", page_size: int = 500) -> list[dict[str, Any]]:
+    async def list_channels(
+        self, search: str = "", page_size: int = 500
+    ) -> list[dict[str, Any]]:
         url = f"{self.base_url}/api/channels/channels/"
         params: dict[str, Any] = {"page_size": page_size}
         if search:
@@ -208,12 +216,20 @@ class DispatcharrClient:
             return data
         return data.get("results", data.get("data", []))
 
-    async def patch_channel_streams(self, channel_id: int, stream_ids: list[int]) -> dict[str, Any]:
+    async def patch_channel_streams(
+        self, channel_id: int, stream_ids: list[int]
+    ) -> dict[str, Any]:
         """Set channel streams order / membership (Dispatcharr ChannelSerializer.update)."""
         url = f"{self.base_url}/api/channels/channels/{channel_id}/"
         payload = {"streams": stream_ids}
         async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
-            r = await client.patch(url, headers={**self._headers(), "Content-Type": "application/json"}, json=payload)
+            r = await client.patch(
+                url,
+                headers={**self._headers(), "Content-Type": "application/json"},
+                json=payload,
+            )
         if r.status_code >= 400:
-            raise DispatcharrError(f"PATCH channel failed: {r.status_code} {r.text[:500]}")
+            raise DispatcharrError(
+                f"PATCH channel failed: {r.status_code} {r.text[:500]}"
+            )
         return r.json()

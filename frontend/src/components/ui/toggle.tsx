@@ -8,7 +8,13 @@ type Props = {
   className?: string;
 };
 
-export function Toggle({ checked, onChange, disabled, label, className }: Props) {
+export function Toggle({
+  checked,
+  onChange,
+  disabled,
+  label,
+  className,
+}: Props) {
   return (
     <button
       type="button"
@@ -20,7 +26,7 @@ export function Toggle({ checked, onChange, disabled, label, className }: Props)
       className={cn(
         "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-150",
         checked ? "bg-(--color-accent)" : "bg-(--color-border)",
-        disabled && "opacity-50 pointer-events-none",
+        disabled && "pointer-events-none opacity-50",
         className,
       )}
     >

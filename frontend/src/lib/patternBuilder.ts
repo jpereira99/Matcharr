@@ -9,7 +9,10 @@ export function replaceSelectionWithPlaceholder(
   const end = Math.max(start, Math.min(selEnd, pattern.length));
   const selected = pattern.slice(start, end);
   if (!selected.trim()) {
-    return { ok: false, message: "Select text in the pattern field, then tap a placeholder." };
+    return {
+      ok: false,
+      message: "Select text in the pattern field, then tap a placeholder.",
+    };
   }
   const next = pattern.slice(0, start) + token + pattern.slice(end);
   return { ok: true, next, caret: start + token.length };

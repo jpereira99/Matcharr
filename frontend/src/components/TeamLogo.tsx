@@ -30,8 +30,7 @@ export function TeamLogo({
   const [preferLightAsset, setPreferLightAsset] = useState(false);
   const urlLight = teamLogoUrl(league, abbreviation, espnTeamId, false);
   const urlDark = teamLogoUrl(league, abbreviation, espnTeamId, true);
-  const url =
-    !isDark || preferLightAsset ? urlLight : urlDark;
+  const url = !isDark || preferLightAsset ? urlLight : urlDark;
 
   useEffect(() => {
     setFailed(false);
@@ -39,7 +38,9 @@ export function TeamLogo({
   }, [league, abbreviation, espnTeamId, isDark]);
 
   if (!url || failed) {
-    const initials = (abbreviation || teamName || "?").slice(0, 3).toUpperCase();
+    const initials = (abbreviation || teamName || "?")
+      .slice(0, 3)
+      .toUpperCase();
     const bg = teamColor ? `#${teamColor}` : "var(--color-surface-raised)";
     return (
       <div
@@ -68,7 +69,13 @@ export function TeamLogo({
       height={size}
       loading="lazy"
       onError={() => {
-        if (isDark && !preferLightAsset && urlDark && urlLight && urlDark !== urlLight) {
+        if (
+          isDark &&
+          !preferLightAsset &&
+          urlDark &&
+          urlLight &&
+          urlDark !== urlLight
+        ) {
           setPreferLightAsset(true);
         } else {
           setFailed(true);

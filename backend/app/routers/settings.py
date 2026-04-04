@@ -34,7 +34,9 @@ async def test_dispatcharr(body: DispatcharrTestRequest) -> DispatcharrTestRespo
     url = body.dispatcharr_url or s.dispatcharr_url
     token = body.dispatcharr_token or s.dispatcharr_token
     if not url or not token:
-        return DispatcharrTestResponse(ok=False, message="URL and token required", detail=None)
+        return DispatcharrTestResponse(
+            ok=False, message="URL and token required", detail=None
+        )
     client = DispatcharrClient(url, token)
     ok, msg, detail = await client.test_connection()
     return DispatcharrTestResponse(ok=ok, message=msg, detail=detail)

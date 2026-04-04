@@ -49,7 +49,9 @@ async def list_team_channels() -> list[TeamChannelOut]:
 async def create_team_channel(body: TeamChannelCreate) -> TeamChannelOut:
     aliases_json = json.dumps(body.aliases) if body.aliases else None
     async with get_db() as db:
-        cur = await db.execute("SELECT id FROM league_profiles WHERE id = ?", (body.league_profile_id,))
+        cur = await db.execute(
+            "SELECT id FROM league_profiles WHERE id = ?", (body.league_profile_id,)
+        )
         if not await cur.fetchone():
             raise HTTPException(400, "Invalid league_profile_id")
         await db.execute(
@@ -109,7 +111,9 @@ async def update_team_channel(tc_id: int, body: TeamChannelUpdate) -> TeamChanne
             vals.append(json.dumps(body.aliases))
         if sets:
             vals.append(tc_id)
-            await db.execute(f"UPDATE team_channels SET {', '.join(sets)} WHERE id = ?", vals)
+            await db.execute(
+                f"UPDATE team_channels SET {', '.join(sets)} WHERE id = ?", vals
+            )
             await db.commit()
         cur = await db.execute("SELECT * FROM team_channels WHERE id = ?", (tc_id,))
         row = await cur.fetchone()

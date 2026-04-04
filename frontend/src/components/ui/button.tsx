@@ -2,7 +2,13 @@ import { cn } from "@/lib/utils";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "secondary" | "ghost" | "outline" | "danger" | "success";
+  variant?:
+    | "primary"
+    | "secondary"
+    | "ghost"
+    | "outline"
+    | "danger"
+    | "success";
   size?: "sm" | "md" | "lg";
   children: ReactNode;
 };
@@ -10,16 +16,13 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
 const variantStyles: Record<NonNullable<Props["variant"]>, string> = {
   primary:
     "bg-(--color-accent) text-(--color-accent-foreground) shadow-sm hover:bg-(--color-accent-hover)",
-  secondary:
-    "bg-(--color-secondary) text-white shadow-sm hover:brightness-110",
+  secondary: "bg-(--color-secondary) text-white shadow-sm hover:brightness-110",
   ghost:
     "bg-transparent hover:bg-(--color-surface-raised) text-(--color-foreground)",
   outline:
     "border border-(--color-accent) text-(--color-accent) bg-transparent hover:bg-(--color-accent)/10",
-  danger:
-    "bg-(--color-danger) text-white shadow-sm hover:brightness-110",
-  success:
-    "bg-(--color-success) text-white shadow-sm hover:brightness-110",
+  danger: "bg-(--color-danger) text-white shadow-sm hover:brightness-110",
+  success: "bg-(--color-success) text-white shadow-sm hover:brightness-110",
 };
 
 const sizeStyles: Record<NonNullable<Props["size"]>, string> = {
@@ -38,10 +41,10 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center font-medium transition-all duration-150 cursor-pointer",
+        "inline-flex cursor-pointer items-center justify-center font-medium transition-all duration-150",
         variantStyles[variant],
         sizeStyles[size],
-        props.disabled && "opacity-50 pointer-events-none",
+        props.disabled && "pointer-events-none opacity-50",
         className,
       )}
       {...props}

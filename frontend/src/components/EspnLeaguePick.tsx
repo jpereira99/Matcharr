@@ -1,6 +1,11 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CUSTOM_PRESET_ID, ESPN_LEAGUE_PRESETS, presetById, presetIdForSlug } from "@/lib/espnLeagues";
+import {
+  CUSTOM_PRESET_ID,
+  ESPN_LEAGUE_PRESETS,
+  presetById,
+  presetIdForSlug,
+} from "@/lib/espnLeagues";
 
 const selectClass =
   "w-full rounded-(--radius-md) border border-(--color-border) bg-(--color-surface) px-3 py-2 text-sm text-(--color-foreground) outline-none focus:border-(--color-accent) focus:ring-2 focus:ring-(--color-accent)/30";
@@ -36,7 +41,9 @@ export function EspnLeaguePick({ sport, league, onChange }: Props) {
               {p.label}
             </option>
           ))}
-          <option value={CUSTOM_PRESET_ID}>Other (manual sport &amp; league slugs)...</option>
+          <option value={CUSTOM_PRESET_ID}>
+            Other (manual sport &amp; league slugs)...
+          </option>
         </select>
         <p className="mt-1 text-xs text-(--color-muted)">
           ESPN&apos;s public API for schedules and team lists.
@@ -48,7 +55,9 @@ export function EspnLeaguePick({ sport, league, onChange }: Props) {
             <Label>ESPN Sport Slug</Label>
             <Input
               value={sport}
-              onChange={(e) => onChange({ espn_sport: e.target.value, espn_league: league })}
+              onChange={(e) =>
+                onChange({ espn_sport: e.target.value, espn_league: league })
+              }
               placeholder="e.g. baseball"
               className="font-mono text-xs"
             />
@@ -57,7 +66,9 @@ export function EspnLeaguePick({ sport, league, onChange }: Props) {
             <Label>ESPN League Slug</Label>
             <Input
               value={league}
-              onChange={(e) => onChange({ espn_sport: sport, espn_league: e.target.value })}
+              onChange={(e) =>
+                onChange({ espn_sport: sport, espn_league: e.target.value })
+              }
               placeholder="e.g. mlb"
               className="font-mono text-xs"
             />

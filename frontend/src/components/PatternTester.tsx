@@ -28,7 +28,9 @@ export function PatternTester({ pattern }: Props) {
         setGroups(r.groups);
         setResult("Matched — captured groups below.");
       } else {
-        setResult("No match — adjust the pattern to mirror your provider's title format.");
+        setResult(
+          "No match — adjust the pattern to mirror your provider's title format.",
+        );
       }
     } catch (e) {
       setResult(String(e));
@@ -39,17 +41,30 @@ export function PatternTester({ pattern }: Props) {
 
   return (
     <div className="mt-4 rounded-(--radius-lg) border border-dashed border-(--color-border) bg-(--color-surface-raised)/50 p-4">
-      <div className="text-xs font-semibold uppercase tracking-wide text-(--color-muted)">Pattern Tester</div>
+      <div className="text-xs font-semibold tracking-wide text-(--color-muted) uppercase">
+        Pattern Tester
+      </div>
       <p className="mt-2 text-xs text-(--color-muted)">
-        Paste a real stream title from Dispatcharr to verify your pattern captures team names correctly.
+        Paste a real stream title from Dispatcharr to verify your pattern
+        captures team names correctly.
       </p>
       <div className="mt-3 grid gap-3 md:grid-cols-2">
         <div>
           <Label>Sample stream name</Label>
-          <Input value={sample} onChange={(e) => setSample(e.target.value)} className="font-mono text-xs" />
+          <Input
+            value={sample}
+            onChange={(e) => setSample(e.target.value)}
+            className="font-mono text-xs"
+          />
         </div>
         <div className="flex items-end">
-          <Button type="button" variant="ghost" size="sm" onClick={() => void run()} disabled={loading}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => void run()}
+            disabled={loading}
+          >
             {loading ? "Testing..." : "Test Pattern"}
           </Button>
         </div>

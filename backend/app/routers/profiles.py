@@ -7,7 +7,13 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 
 from app.database import get_db
-from app.models import LeagueProfileCreate, LeagueProfileOut, LeagueProfileUpdate, PatternTestRequest, PatternTestResponse
+from app.models import (
+    LeagueProfileCreate,
+    LeagueProfileOut,
+    LeagueProfileUpdate,
+    PatternTestRequest,
+    PatternTestResponse,
+)
 from app.services.patterns import compile_league_pattern, match_stream_name
 
 router = APIRouter(prefix="/profiles", tags=["profiles"])
@@ -16,12 +22,10 @@ router = APIRouter(prefix="/profiles", tags=["profiles"])
 @router.get("", response_model=list[LeagueProfileOut])
 async def list_profiles() -> list[LeagueProfileOut]:
     async with get_db() as db:
-        cur = await db.execute(
-            """
+        cur = await db.execute("""
             SELECT lp.*, (SELECT COUNT(*) FROM team_channels tc WHERE tc.league_profile_id = lp.id) AS team_channel_count
             FROM league_profiles lp ORDER BY lp.id
-            """
-        )
+            """)
         rows = await cur.fetchall()
     return [_row_to_out(dict(r)) for r in rows]
 
@@ -62,14 +66,22 @@ async def create_profile(body: LeagueProfileCreate) -> LeagueProfileOut:
 
 
 @router.put("/{profile_id}", response_model=LeagueProfileOut)
-async def update_profile(profile_id: int, body: LeagueProfileUpdate) -> LeagueProfileOut:
+async def update_profile(
+    profile_id: int, body: LeagueProfileUpdate
+) -> LeagueProfileOut:
     async with get_db() as db:
-        cur = await db.execute("SELECT * FROM league_profiles WHERE id = ?", (profile_id,))
+        cur = await db.execute(
+            "SELECT * FROM league_profiles WHERE id = ?", (profile_id,)
+        )
         row = await cur.fetchone()
         if not row:
             raise HTTPException(404, "Profile not found")
         data = dict(row)
-        pattern = body.stream_pattern if body.stream_pattern is not None else data["stream_pattern"]
+        pattern = (
+            body.stream_pattern
+            if body.stream_pattern is not None
+            else data["stream_pattern"]
+        )
         try:
             compile_league_pattern(pattern)
         except ValueError as e:

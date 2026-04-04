@@ -10,7 +10,12 @@ import aiosqlite
 
 from app.database import kv_get, kv_set
 from app.services.dispatcharr import DispatcharrClient, DispatcharrError
-from app.services.patterns import CompiledPattern, compile_league_pattern, match_stream_name, teams_match
+from app.services.patterns import (
+    CompiledPattern,
+    compile_league_pattern,
+    match_stream_name,
+    teams_match,
+)
 from app.settings_store import load_settings
 
 
@@ -21,14 +26,12 @@ async def _get_profiles(db: aiosqlite.Connection) -> list[dict[str, Any]]:
 
 
 async def _get_team_channels(db: aiosqlite.Connection) -> list[dict[str, Any]]:
-    cur = await db.execute(
-        """
+    cur = await db.execute("""
         SELECT tc.*, lp.stream_pattern, lp.stream_name_filter, lp.espn_sport, lp.espn_league
         FROM team_channels tc
         JOIN league_profiles lp ON lp.id = tc.league_profile_id
         WHERE tc.enabled = 1 AND lp.enabled = 1
-        """
-    )
+        """)
     rows = await cur.fetchall()
     return [dict(r) for r in rows]
 
@@ -57,7 +60,9 @@ def _game_active_for_team(
         return False
     if gt.tzinfo is None:
         gt = gt.replace(tzinfo=timezone.utc)
-    now_aware = now.astimezone(timezone.utc) if now.tzinfo else now.replace(tzinfo=timezone.utc)
+    now_aware = (
+        now.astimezone(timezone.utc) if now.tzinfo else now.replace(tzinfo=timezone.utc)
+    )
     status = str(game.get("status", "")).lower()
     if status == "post":
         return False
@@ -123,7 +128,9 @@ def _pick_game_for_team(
             mine.append((g, False))
     if not mine:
         return None, False
-    active = [(g, h) for g, h in mine if _game_active_for_team(g, now, pre_game_minutes)]
+    active = [
+        (g, h) for g, h in mine if _game_active_for_team(g, now, pre_game_minutes)
+    ]
     if not active:
         return None, False
     active.sort(key=lambda gh: str(gh[0].get("game_time", "")))
@@ -140,7 +147,9 @@ async def _ensure_schedule_cache(
     pid = profile_row["id"]
     sport = profile_row["espn_sport"]
     league = profile_row["espn_league"]
-    games = await espn_service.fetch_games_for_league(sport, league, settings.schedule_lookahead_days)
+    games = await espn_service.fetch_games_for_league(
+        sport, league, settings.schedule_lookahead_days
+    )
     for g in games:
         raw = json.dumps(g.raw, default=str)
         await db.execute(
@@ -200,7 +209,9 @@ async def maybe_refresh_schedules(db: aiosqlite.Connection) -> None:
             lt = datetime.fromisoformat(last)
             if lt.tzinfo is None:
                 lt = lt.replace(tzinfo=timezone.utc)
-            if datetime.now(timezone.utc) - lt < timedelta(hours=settings.schedule_refresh_hours):
+            if datetime.now(timezone.utc) - lt < timedelta(
+                hours=settings.schedule_refresh_hours
+            ):
                 return
         except Exception:
             pass
@@ -277,7 +288,9 @@ def _find_matching_stream(
     return None
 
 
-async def run_match_cycle(db: aiosqlite.Connection, *, force_schedule_refresh: bool = False) -> dict[str, Any]:
+async def run_match_cycle(
+    db: aiosqlite.Connection, *, force_schedule_refresh: bool = False
+) -> dict[str, Any]:
     """Refresh schedules and switch Dispatcharr streams when a game is in the routing window.
 
     Manual /run-now uses force_schedule_refresh=True so ESPN is always queried; the periodic job uses
@@ -334,15 +347,13 @@ async def run_match_cycle(db: aiosqlite.Connection, *, force_schedule_refresh: b
         if not game:
             continue
 
-        opp = (
-            str(game["away_team"])
-            if is_home
-            else str(game["home_team"])
-        )
+        opp = str(game["away_team"]) if is_home else str(game["home_team"])
         team_name = str(row["team_name"])
         aliases = _aliases(row)
 
-        match = _find_matching_stream(compiled, streams, team_name, aliases, opp, is_home)
+        match = _find_matching_stream(
+            compiled, streams, team_name, aliases, opp, is_home
+        )
         if not match:
             await db.execute(
                 """
@@ -535,7 +546,9 @@ async def preview_routing(db: aiosqlite.Connection) -> dict[str, Any]:
 
         opp = str(game["away_team"]) if is_home else str(game["home_team"])
         aliases = _aliases(row)
-        match = _find_matching_stream(compiled, streams, team_name, aliases, opp, is_home)
+        match = _find_matching_stream(
+            compiled, streams, team_name, aliases, opp, is_home
+        )
         next_game = f'{game.get("away_team")} @ {game.get("home_team")}'
         if not match:
             items.append(
@@ -558,7 +571,11 @@ async def preview_routing(db: aiosqlite.Connection) -> dict[str, Any]:
                 }
             )
 
-    return {"ok": True, "message": f"Preview for {len(items)} mapping(s)", "items": items}
+    return {
+        "ok": True,
+        "message": f"Preview for {len(items)} mapping(s)",
+        "items": items,
+    }
 
 
 async def upcoming_stream_matches(db: aiosqlite.Connection) -> dict[str, Any]:
@@ -681,7 +698,9 @@ async def upcoming_stream_matches(db: aiosqlite.Connection) -> dict[str, Any]:
 
         opp = str(game["away_team"]) if is_home else str(game["home_team"])
         aliases = _aliases(row)
-        match = _find_matching_stream(compiled, streams, team_name, aliases, opp, is_home)
+        match = _find_matching_stream(
+            compiled, streams, team_name, aliases, opp, is_home
+        )
         mid = int(match["id"]) if match and match.get("id") is not None else None
         mname = str(match.get("name", "")) if match else None
 
@@ -714,4 +733,8 @@ async def upcoming_stream_matches(db: aiosqlite.Connection) -> dict[str, Any]:
                 }
             )
 
-    return {"ok": True, "message": f"Compared {len(items)} mapping(s) to Dispatcharr streams", "items": items}
+    return {
+        "ok": True,
+        "message": f"Compared {len(items)} mapping(s) to Dispatcharr streams",
+        "items": items,
+    }

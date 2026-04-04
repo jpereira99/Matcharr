@@ -31,7 +31,7 @@ export function Tabs({ value, onChange, items, className }: Props) {
           aria-selected={value === item.id}
           onClick={() => onChange(item.id)}
           className={cn(
-            "inline-flex items-center gap-1.5 rounded-(--radius-sm) px-3 py-1.5 text-xs font-medium transition-all duration-150 cursor-pointer",
+            "inline-flex cursor-pointer items-center gap-1.5 rounded-(--radius-sm) px-3 py-1.5 text-xs font-medium transition-all duration-150",
             value === item.id
               ? "bg-(--color-surface) text-(--color-foreground) shadow-sm"
               : "text-(--color-muted) hover:text-(--color-foreground)",

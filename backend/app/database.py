@@ -10,7 +10,6 @@ import aiosqlite
 
 from app.config import get_settings
 
-
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS app_kv (
     key TEXT PRIMARY KEY,
@@ -98,7 +97,9 @@ async def get_db() -> AsyncIterator[aiosqlite.Connection]:
         await db.close()
 
 
-async def kv_get(db: aiosqlite.Connection, key: str, default: str | None = None) -> str | None:
+async def kv_get(
+    db: aiosqlite.Connection, key: str, default: str | None = None
+) -> str | None:
     cur = await db.execute("SELECT value FROM app_kv WHERE key = ?", (key,))
     row = await cur.fetchone()
     if row is None:

@@ -61,7 +61,12 @@ def event_to_game(ev: dict[str, Any]) -> EspnGame | None:
     for t in teams:
         team = t.get("team") or {}
         tid = str(team.get("id", ""))
-        display = team.get("displayName") or team.get("shortDisplayName") or team.get("name") or ""
+        display = (
+            team.get("displayName")
+            or team.get("shortDisplayName")
+            or team.get("name")
+            or ""
+        )
         if t.get("homeAway") == "home":
             home = (tid, display)
         elif t.get("homeAway") == "away":
@@ -121,15 +126,17 @@ async def fetch_teams(sport: str, league: str) -> list[dict[str, Any]]:
                 logo = lg.get("href", "")
             if "dark" in rels and "scoreboard" not in rels and not logo_dark:
                 logo_dark = lg.get("href", "")
-        out.append({
-            "id": tid,
-            "name": name,
-            "abbreviation": abbr,
-            "logo": logo,
-            "logo_dark": logo_dark,
-            "color": team.get("color", ""),
-            "alternateColor": team.get("alternateColor", ""),
-        })
+        out.append(
+            {
+                "id": tid,
+                "name": name,
+                "abbreviation": abbr,
+                "logo": logo,
+                "logo_dark": logo_dark,
+                "color": team.get("color", ""),
+                "alternateColor": team.get("alternateColor", ""),
+            }
+        )
     out.sort(key=lambda x: x["name"])
     return out
 

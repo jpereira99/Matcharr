@@ -39,10 +39,12 @@ function SidebarContent({ collapsed }: { collapsed: boolean }) {
         </div>
         {!collapsed && (
           <div className="min-w-0">
-            <div className="text-sm font-extrabold tracking-tight font-heading text-(--color-foreground)">
+            <div className="font-heading text-sm font-extrabold tracking-tight text-(--color-foreground)">
               Matcharr
             </div>
-            <div className="text-[10px] text-(--color-muted)">Stream Router</div>
+            <div className="text-[10px] text-(--color-muted)">
+              Stream Router
+            </div>
           </div>
         )}
       </div>
@@ -67,7 +69,7 @@ function SidebarContent({ collapsed }: { collapsed: boolean }) {
             {({ isActive }) => (
               <>
                 {isActive && (
-                  <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-(--color-accent)" />
+                  <span className="absolute top-1/2 left-0 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-(--color-accent)" />
                 )}
                 <Icon className="h-4 w-4 shrink-0" />
                 {!collapsed && (
@@ -107,7 +109,7 @@ export function Sidebar() {
           <div className="flex h-7 w-7 items-center justify-center rounded-(--radius-md) bg-(--color-accent)">
             <Radio className="h-3.5 w-3.5 text-(--color-accent-foreground)" />
           </div>
-          <span className="text-sm font-extrabold font-heading">Matcharr</span>
+          <span className="font-heading text-sm font-extrabold">Matcharr</span>
         </div>
       </div>
 
@@ -147,7 +149,7 @@ export function Sidebar() {
         <button
           type="button"
           onClick={toggle}
-          className="absolute -right-3 top-7 z-20 flex h-6 w-6 items-center justify-center rounded-full border border-(--color-border) bg-(--color-surface) text-(--color-muted) shadow-sm hover:text-(--color-foreground) transition-colors cursor-pointer"
+          className="absolute top-7 -right-3 z-20 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-(--color-border) bg-(--color-surface) text-(--color-muted) shadow-sm transition-colors hover:text-(--color-foreground)"
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {collapsed ? (

@@ -1,4 +1,7 @@
-import { PATTERN_PLACEHOLDER_TOKENS, PatternPlaceholderTable } from "@/components/PatternPlaceholderHelp";
+import {
+  PATTERN_PLACEHOLDER_TOKENS,
+  PatternPlaceholderTable,
+} from "@/components/PatternPlaceholderHelp";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { replaceSelectionWithPlaceholder } from "@/lib/patternBuilder";
@@ -13,7 +16,12 @@ type Props = {
   compactHelp?: boolean;
 };
 
-export function StreamPatternField({ value, onChange, idSuffix = "", compactHelp }: Props) {
+export function StreamPatternField({
+  value,
+  onChange,
+  idSuffix = "",
+  compactHelp,
+}: Props) {
   const [hint, setHint] = useState<string | null>(null);
   const patternRef = useRef<HTMLInputElement>(null);
   const pendingCaret = useRef<{ start: number; end: number } | null>(null);
@@ -50,7 +58,8 @@ export function StreamPatternField({ value, onChange, idSuffix = "", compactHelp
         <div className="p-4">
           <Label htmlFor={patternId}>Pattern</Label>
           <p className="mt-1 text-xs leading-relaxed text-(--color-muted)">
-            Paste a title from Dispatcharr, select the text to capture, then insert a token below.
+            Paste a title from Dispatcharr, select the text to capture, then
+            insert a token below.
           </p>
           <Input
             id={patternId}
@@ -68,7 +77,7 @@ export function StreamPatternField({ value, onChange, idSuffix = "", compactHelp
 
         <div className="border-t border-(--color-border) bg-(--color-surface-raised) px-4 py-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-            <span className="shrink-0 text-[10px] font-medium uppercase tracking-wider text-(--color-muted)">
+            <span className="shrink-0 text-[10px] font-medium tracking-wider text-(--color-muted) uppercase">
               Insert
             </span>
             <div className="flex min-w-0 flex-1 flex-wrap gap-1.5">
@@ -78,7 +87,7 @@ export function StreamPatternField({ value, onChange, idSuffix = "", compactHelp
                   type="button"
                   onClick={() => applyPlaceholder(token)}
                   className={cn(
-                    "rounded-(--radius-sm) border border-(--color-border) bg-(--color-surface) px-2 py-1 font-mono text-[11px] leading-none cursor-pointer",
+                    "cursor-pointer rounded-(--radius-sm) border border-(--color-border) bg-(--color-surface) px-2 py-1 font-mono text-[11px] leading-none",
                     "text-(--color-accent) transition-colors",
                     "hover:border-(--color-accent)/30 hover:bg-(--color-accent)/5",
                   )}
@@ -92,7 +101,9 @@ export function StreamPatternField({ value, onChange, idSuffix = "", compactHelp
             <p
               className={cn(
                 "mt-2 text-xs",
-                hint.startsWith("Replaced") ? "text-(--color-muted)" : "text-(--color-warning)",
+                hint.startsWith("Replaced")
+                  ? "text-(--color-muted)"
+                  : "text-(--color-warning)",
               )}
             >
               {hint}
@@ -102,9 +113,11 @@ export function StreamPatternField({ value, onChange, idSuffix = "", compactHelp
 
         {!compactHelp && (
           <div className="border-t border-(--color-border) px-4 py-3">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-(--color-muted)">Example</p>
+            <p className="text-[10px] font-medium tracking-wider text-(--color-muted) uppercase">
+              Example
+            </p>
             <p className="mt-1.5 text-xs text-(--color-muted)">
-              <code className="break-all rounded-(--radius-sm) bg-(--color-surface-raised) px-1.5 py-0.5 font-mono text-[10px] text-(--color-foreground) sm:text-[11px]">
+              <code className="rounded-(--radius-sm) bg-(--color-surface-raised) px-1.5 py-0.5 font-mono text-[10px] break-all text-(--color-foreground) sm:text-[11px]">
                 MLB {"{n}"} | {"{away}"} x {"{home}"} start:{"{time}"}
               </code>
             </p>
@@ -113,18 +126,28 @@ export function StreamPatternField({ value, onChange, idSuffix = "", compactHelp
         {compactHelp && (
           <div className="border-t border-(--color-border) px-4 py-3">
             <p className="text-xs text-(--color-muted)">
-              Use <code className="font-mono text-(--color-foreground)">{"{away}"}</code> and{" "}
-              <code className="font-mono text-(--color-foreground)">{"{home}"}</code> where team names appear.
+              Use{" "}
+              <code className="font-mono text-(--color-foreground)">
+                {"{away}"}
+              </code>{" "}
+              and{" "}
+              <code className="font-mono text-(--color-foreground)">
+                {"{home}"}
+              </code>{" "}
+              where team names appear.
             </p>
           </div>
         )}
 
         <details className="group border-t border-(--color-border)">
           <summary className="flex cursor-pointer list-none items-center gap-1.5 px-4 py-3 text-xs font-medium text-(--color-foreground) transition hover:bg-(--color-surface-raised) [&::-webkit-details-marker]:hidden">
-            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-(--color-muted) transition-transform group-open:rotate-90" aria-hidden />
+            <ChevronRight
+              className="h-3.5 w-3.5 shrink-0 text-(--color-muted) transition-transform group-open:rotate-90"
+              aria-hidden
+            />
             Placeholder reference
           </summary>
-          <div className="border-t border-(--color-border) bg-(--color-surface-raised) px-4 pb-4 pt-1">
+          <div className="border-t border-(--color-border) bg-(--color-surface-raised) px-4 pt-1 pb-4">
             <PatternPlaceholderTable />
           </div>
         </details>

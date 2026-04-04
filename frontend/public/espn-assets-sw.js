@@ -55,10 +55,7 @@ self.addEventListener("fetch", (event) => {
         }
         return response;
       } catch {
-        return (
-          cached ||
-          Response.error()
-        );
+        return cached || Response.error();
       }
     }),
   );

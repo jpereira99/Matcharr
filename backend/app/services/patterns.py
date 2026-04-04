@@ -60,7 +60,9 @@ def compile_league_pattern(user_pattern: str) -> CompiledPattern:
     return CompiledPattern(pattern=user_pattern, regex=regex, field_order=field_order)
 
 
-def match_stream_name(compiled: CompiledPattern, stream_name: str) -> tuple[bool, dict[str, str]]:
+def match_stream_name(
+    compiled: CompiledPattern, stream_name: str
+) -> tuple[bool, dict[str, str]]:
     m = compiled.regex.match(stream_name.strip())
     if not m:
         return False, {}

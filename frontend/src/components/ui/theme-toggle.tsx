@@ -29,7 +29,7 @@ export function ThemeToggle({ collapsed }: { collapsed?: boolean }) {
       type="button"
       onClick={next}
       className={cn(
-        "flex items-center gap-2 rounded-(--radius-md) px-2.5 py-2 text-xs font-medium transition-colors cursor-pointer",
+        "flex cursor-pointer items-center gap-2 rounded-(--radius-md) px-2.5 py-2 text-xs font-medium transition-colors",
         "text-(--color-muted) hover:bg-(--color-surface-raised) hover:text-(--color-foreground)",
       )}
       title={`Theme: ${labels[preference]}`}
