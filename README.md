@@ -1,5 +1,7 @@
 # ⚽ Matcharr
 
+[![CI](https://github.com/jpereira99/Matcharr/actions/workflows/ci.yml/badge.svg)](https://github.com/jpereira99/Matcharr/actions/workflows/ci.yml)
+
 **Matcharr** is a companion service for [Dispatcharr](https://github.com/Dispatcharr/Dispatcharr): it reads ESPN schedules, matches live stream titles to per-league patterns, and updates your team’s virtual Dispatcharr channel to the right stream when a game is in the routing window.
 
 The stack is a **FastAPI** backend (scheduler + SQLite + Dispatcharr client) and a **React** UI (Vite, Tailwind CSS) served as static files in production or proxied in development.
@@ -52,18 +54,32 @@ The stack is a **FastAPI** backend (scheduler + SQLite + Dispatcharr client) and
 
 ## Quick Start (Docker)
 
-From the repository root:
+The published image is on **GitHub Container Registry** at `ghcr.io/jpereira99/matcharr`. From the repository root, use the compose file that pulls that image:
 
 ```bash
-docker compose up -d --build
+docker compose -f docker-compose.ghcr.yml up -d
 ```
 
 Then open **[http://localhost:8400](http://localhost:8400)**.
 
 - **Data** persists under `./data` on the host (mounted to `/app/data` in the container). The SQLite file is created automatically.
-- **Timezone** defaults to `America/New_York` in `docker-compose.yml`; adjust the `TZ` value if you prefer another zone.
+- **Timezone** defaults to `America/New_York` in `docker-compose.ghcr.yml`; adjust the `TZ` value if you prefer another zone.
 
-To rebuild after pulling changes:
+To update to the latest published image after pulling repo changes (or when you want a fresh `latest`):
+
+```bash
+docker compose -f docker-compose.ghcr.yml pull && docker compose -f docker-compose.ghcr.yml up -d
+```
+
+To pin a specific version, edit `docker-compose.ghcr.yml` and set `image:` to a tag such as `ghcr.io/jpereira99/matcharr:1.0.0` instead of `:latest`.
+
+**Build from source** (optional — builds the image locally from this repo):
+
+```bash
+docker compose up -d --build
+```
+
+To rebuild from source after code changes:
 
 ```bash
 docker compose build --no-cache && docker compose up -d
@@ -160,12 +176,13 @@ Matcharr is aimed at **home or trusted networks**. The HTTP API **does not imple
 ## Project layout
 
 ```text
-├── backend/           # FastAPI application (use PYTHONPATH=backend)
-├── frontend/          # React + Vite UI
-├── docker-compose.yml # Production-style run with volume for ./data
-├── Dockerfile         # Multi-stage: build UI, copy into Python image
-├── LICENSE            # MIT
-├── AI_DISCLOSURE.md   # How AI tools may have been used in this project
+├── backend/                 # FastAPI application (use PYTHONPATH=backend)
+├── frontend/                # React + Vite UI
+├── docker-compose.ghcr.yml  # Run pre-built image from ghcr.io (recommended)
+├── docker-compose.yml       # Build and run from source; volume for ./data
+├── Dockerfile               # Multi-stage: build UI, copy into Python image
+├── LICENSE                  # MIT
+├── AI_DISCLOSURE.md         # How AI tools may have been used in this project
 └── README.md
 ```
 
