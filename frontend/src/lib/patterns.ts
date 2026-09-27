@@ -447,6 +447,23 @@ export function deriveTokens(title: string, compiled: Compiled): Token[] {
   return tokens;
 }
 
+const SAMPLE_VALUES: Record<Field, string> = {
+  home: "Home Team",
+  away: "Away Team",
+  time: "19:00",
+  n: "1",
+  league: "League",
+};
+
+/** A stand-in title that fits `pattern`, for tagging when no real streams exist. */
+export function exampleFromPattern(pattern: string): string {
+  return pattern
+    .trim()
+    .replace(/\{\{|\}\}|\{(\w+)\}/g, (m, name?: string) =>
+      m === "{{" ? "{" : m === "}}" ? "}" : (SAMPLE_VALUES[name as Field] ?? m),
+    );
+}
+
 const escapeLiteral = (s: string) =>
   s.replace(/\{/g, "{{").replace(/\}/g, "}}");
 

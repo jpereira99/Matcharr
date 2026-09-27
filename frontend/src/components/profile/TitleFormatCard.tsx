@@ -5,6 +5,7 @@ import { fmtDay, isToday } from "@/lib/date";
 import {
   aliasFromHow,
   deriveTokens,
+  exampleFromPattern,
   patternFromTokens,
   setTokenType,
   type Compiled,
@@ -120,6 +121,12 @@ export function TitleFormatCard({
   evaluate,
 }: Props) {
   const [example, setExample] = useState<string | null>(null);
+  // Example used when the pool is empty. `auto` ones are stand-ins built from
+  // the pattern and pinned while tagging; null means follow the pattern.
+  const [typedExample, setTypedExample] = useState<{
+    text: string;
+    auto: boolean;
+  } | null>(null);
   const [textMode, setTextMode] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
   const [edited, setEdited] = useState<{ key: string; tokens: Token[] } | null>(
@@ -135,8 +142,13 @@ export function TitleFormatCard({
     }
   }, [titles]);
 
-  const exampleTitle =
-    example !== null && titles.includes(example) ? example : (titles[0] ?? "");
+  const hasExamples = titles.length > 0;
+  const autoExample = !hasExamples && (typedExample?.auto ?? true);
+  const exampleTitle = hasExamples
+    ? example !== null && titles.includes(example)
+      ? example
+      : titles[0]
+    : (typedExample?.text ?? exampleFromPattern(pattern));
   const key = `${exampleTitle}\u0000${pattern}`;
   const tokens = useMemo(
     () =>
@@ -164,15 +176,19 @@ export function TitleFormatCard({
     if (!tokens[sel] || tokens[sel].type === type) return;
     const next = setTokenType(tokens, sel, type);
     const p = patternFromTokens(next);
+    if (autoExample) setTypedExample({ text: exampleTitle, auto: true });
     setEdited({ key: `${exampleTitle}\u0000${p}`, tokens: next });
     onPatternChange(p);
   }
 
-  const hasExamples = titles.length > 0;
-  const showText = textMode || !hasExamples;
-  const check = exampleTitle
-    ? checkMessage(evaluate(exampleTitle), pattern)
-    : null;
+  const check = !exampleTitle
+    ? null
+    : autoExample
+      ? {
+          ok: false,
+          text: "This example was built from the pattern. Paste a real title from your provider to check it against ESPN.",
+        }
+      : checkMessage(evaluate(exampleTitle), pattern);
   const selToken = tokens[sel];
 
   return (
@@ -185,48 +201,72 @@ export function TitleFormatCard({
           <span className="min-w-0 flex-1 font-mono text-xs break-words whitespace-pre-wrap text-(--color-text-secondary)">
             {pattern || "No pattern yet"}
           </span>
-          {hasExamples && (
-            <button
-              type="button"
-              onClick={() => setTextMode(!textMode)}
-              className="inline-flex flex-none cursor-pointer items-center gap-1.5 rounded-(--radius-sm) border border-(--color-border) bg-(--color-surface) px-2.5 py-1.5 text-xs font-medium text-(--color-foreground) transition-colors duration-150 hover:border-(--color-muted)"
-            >
-              {textMode ? (
-                <MousePointerClick className="h-3 w-3" />
-              ) : (
-                <Pencil className="h-3 w-3" />
-              )}
-              {textMode ? "Back to visual" : "Edit as text"}
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => {
+              if (textMode && typedExample?.auto) setTypedExample(null);
+              setTextMode(!textMode);
+            }}
+            className="inline-flex flex-none cursor-pointer items-center gap-1.5 rounded-(--radius-sm) border border-(--color-border) bg-(--color-surface) px-2.5 py-1.5 text-xs font-medium text-(--color-foreground) transition-colors duration-150 hover:border-(--color-muted)"
+          >
+            {textMode ? (
+              <MousePointerClick className="h-3 w-3" />
+            ) : (
+              <Pencil className="h-3 w-3" />
+            )}
+            {textMode ? "Back to visual" : "Edit as text"}
+          </button>
         </>
       }
     >
       <div>
         <Label htmlFor="example-stream">Example stream</Label>
-        <Select
-          id="example-stream"
-          mono
-          value={exampleTitle}
-          disabled={!hasExamples}
-          onChange={(e) => {
-            setExample(e.target.value);
-            setSelected(null);
-            setTextMode(false);
-          }}
-        >
-          {!hasExamples && (
-            <option value="">No streams in this pool yet</option>
-          )}
-          {options.map((t) => (
-            <option key={t} value={t}>
-              {t}
-            </option>
-          ))}
-        </Select>
+        {hasExamples ? (
+          <Select
+            id="example-stream"
+            mono
+            value={exampleTitle}
+            onChange={(e) => {
+              setExample(e.target.value);
+              setSelected(null);
+              setTextMode(false);
+            }}
+          >
+            {options.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </Select>
+        ) : (
+          <>
+            <Input
+              id="example-stream"
+              value={
+                typedExample && !typedExample.auto ? typedExample.text : ""
+              }
+              onChange={(e) => {
+                setTypedExample(
+                  e.target.value ? { text: e.target.value, auto: false } : null,
+                );
+                setSelected(null);
+              }}
+              spellCheck={false}
+              placeholder={
+                exampleTitle ||
+                "e.g. (Apple) (MLS) 009 |  New_York vs. St. Louis (2026-09-26 19:25:25)"
+              }
+              className="font-mono text-xs"
+            />
+            <p className="mt-1.5 text-xs text-(--color-muted)">
+              No streams in this pool yet. Paste a title from your provider to
+              tag its parts.
+            </p>
+          </>
+        )}
       </div>
 
-      {showText ? (
+      {textMode ? (
         <div>
           <Label htmlFor="pattern-text">Pattern text</Label>
           <Input
@@ -243,10 +283,12 @@ export function TitleFormatCard({
             <span className="font-mono text-(--color-foreground)">
               {"{home} {away} {time} {n}"}
             </span>
-            {!hasExamples &&
-              ". No streams to use as an example yet, so adjust the stream filters or type the pattern."}
           </p>
         </div>
+      ) : tokens.length === 0 ? (
+        <p className="rounded-(--radius-md) bg-(--color-surface-raised) px-3 py-2.5 text-xs text-(--color-muted)">
+          Paste an example title above, then click its parts to tag them.
+        </p>
       ) : (
         <>
           <div
