@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&amp;family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;background:#0c0f14;color:#f1f5f9;font-family:"DM Sans",Inter,ui-sans-serif,system-ui,sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}a{color:#34d399;text-decoration:none}a:hover{color:#6ee7b7}*{box-sizing:border-box}select option{background:#151a22;color:#f1f5f9}button{white-space:nowrap}</style>
+</helmet>
+<div style="display:flex;min-height:100vh">
+  <aside style="position:sticky;top:0;height:100vh;width:260px;flex:none;display:flex;flex-direction:column;border-right:1px solid #1e2a3a;background:#090c10">
+    <div style="display:flex;align-items:center;gap:12px;border-bottom:1px solid #1e2a3a;padding:20px 16px">
+      <div style="display:flex;width:36px;height:36px;flex:none;align-items:center;justify-content:center;border-radius:12px;background:#34d399;color:#022c22"><span style="width:18px;height:18px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/radio.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/radio.svg) center/contain no-repeat"></span></div>
+      <div><div style="font-size:14px;font-weight:800;letter-spacing:-0.025em">Matcharr</div><div style="font-size:10px;color:#64748b">Stream Router</div></div>
+    </div>
+    <nav style="display:flex;flex:1;flex-direction:column;gap:2px;padding:8px">
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;color:#64748b"><span style="width:16px;height:16px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/layout-dashboard.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/layout-dashboard.svg) center/contain no-repeat"></span><span style="font-size:14px;font-weight:500">Dashboard</span></div>
+      <div style="position:relative;display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;color:#34d399;background:rgb(52 211 153 / .1)"><span style="position:absolute;left:0;top:50%;height:20px;width:3px;transform:translateY(-50%);border-radius:0 9999px 9999px 0;background:#34d399"></span><span style="width:16px;height:16px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/trophy.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/trophy.svg) center/contain no-repeat"></span><span style="font-size:14px;font-weight:500">League Profiles</span></div>
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;color:#64748b"><span style="width:16px;height:16px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/users.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/users.svg) center/contain no-repeat"></span><span style="font-size:14px;font-weight:500">Team Channels</span></div>
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;color:#64748b"><span style="width:16px;height:16px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/activity.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/activity.svg) center/contain no-repeat"></span><span style="font-size:14px;font-weight:500">Activity Log</span></div>
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;color:#64748b"><span style="width:16px;height:16px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/settings.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/settings.svg) center/contain no-repeat"></span><span style="font-size:14px;font-weight:500">Settings</span></div>
+    </nav>
+    <div style="border-top:1px solid #1e2a3a;padding:8px"><div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;font-size:12px;font-weight:500;color:#64748b"><span style="width:16px;height:16px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/moon.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/moon.svg) center/contain no-repeat"></span><span>Dark</span></div></div>
+  </aside>
+
+  <main style="flex:1;min-width:0;overflow:auto;padding:32px 40px 48px">
+    <div data-screen-label="1a Refined" style="margin:0 auto;max-width:1152px;display:flex;flex-direction:column;gap:24px">
+      <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#64748b"><a href="Redesign Themed.dc.html" style="color:#64748b">League Profiles</a><span style="width:12px;height:12px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/chevron-right.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/chevron-right.svg) center/contain no-repeat"></span><span style="color:#f1f5f9">{{ name }}</span></div>
+
+      <header style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:14px;min-width:0">
+          <img src="https://a.espncdn.com/i/teamlogos/leagues/500/mls.png" width="44" height="44" style="object-fit:contain">
+          <div style="min-width:0"><h1 style="margin:0;font-size:24px;line-height:32px;font-weight:800;letter-spacing:-0.025em">{{ name }}</h1><p style="margin:2px 0 0;font-size:14px;color:#64748b">5 ESPN games today · 2 teams mapped</p></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <sc-if value="{{ dirty }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;color:#64748b;margin-right:4px">Unsaved changes</span></sc-if>
+          <button onClick="{{ onCancel }}" style="cursor:pointer;border:none;background:transparent;color:#f1f5f9;padding:8px 16px;border-radius:8px;font:500 14px 'DM Sans',sans-serif" style-hover="background:#1c2230">Cancel</button>
+          <button onClick="{{ onSave }}" style="cursor:pointer;border:none;padding:8px 16px;border-radius:8px;font:500 14px 'DM Sans',sans-serif;background:#34d399;color:#022c22;opacity:{{ saveOpacity }}" style-hover="background:#6ee7b7">Save Changes</button>
+        </div>
+      </header>
+
+      <div style="display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(min(100%,440px),1fr));align-items:start">
+
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div style="font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#64748b">Settings</div>
+
+          <div style="border-radius:12px;border:1px solid #1e2a3a;background:#151a22;box-shadow:0 1px 3px 0 rgb(0 0 0 / .3);padding:20px;display:flex;flex-direction:column;gap:14px">
+            <h2 style="margin:0;font-size:16px;font-weight:800;letter-spacing:-0.025em">Basics</h2>
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px">
+              <label style="display:block"><div style="margin-bottom:4px;font-size:12px;font-weight:500;letter-spacing:.025em;text-transform:uppercase;color:#64748b">Name</div><input value="{{ name }}" onChange="{{ onName }}" style="width:100%;border-radius:8px;border:1px solid #1e2a3a;background:#151a22;color:#f1f5f9;padding:8px 12px;font:14px 'DM Sans',sans-serif;outline:none" style-focus="border-color:#34d399;box-shadow:0 0 0 2px rgb(52 211 153 / .3)"></label>
+              <label style="display:block"><div style="margin-bottom:4px;font-size:12px;font-weight:500;letter-spacing:.025em;text-transform:uppercase;color:#64748b">ESPN League</div><select onChange="{{ markDirty }}" style="width:100%;border-radius:8px;border:1px solid #1e2a3a;background:#151a22;color:#f1f5f9;padding:8px 10px;font:14px 'DM Sans',sans-serif;outline:none"><option>MLS</option><option>NWSL</option><option>English Premier League</option><option>MLB</option><option>NFL</option></select></label>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <button onClick="{{ onToggle }}" role="switch" style="cursor:pointer;border:none;padding:0;display:inline-flex;height:20px;width:36px;align-items:center;border-radius:9999px;background:{{ toggleBg }}"><span style="height:14px;width:14px;border-radius:9999px;background:#fff;transform:{{ toggleX }};transition:transform 150ms ease"></span></button>
+              <span style="font-size:14px">{{ enabledLabel }}</span>
+            </div>
+          </div>
+
+          <div style="border-radius:12px;border:1px solid #1e2a3a;background:#151a22;box-shadow:0 1px 3px 0 rgb(0 0 0 / .3);padding:20px;display:flex;flex-direction:column;gap:14px">
+            <div><div style="display:flex;align-items:center;gap:10px"><span style="display:inline-flex;width:22px;height:22px;flex:none;align-items:center;justify-content:center;border-radius:9999px;background:rgb(52 211 153 / .15);color:#34d399;font-size:12px;font-weight:700">1</span><h2 style="margin:0;font-size:16px;font-weight:800;letter-spacing:-0.025em">Streams</h2></div><p style="margin:6px 0 0 32px;font-size:12px;color:#64748b">Which Dispatcharr streams to look through. <span style="color:#f1f5f9">{{ streamCount }} streams</span> right now.</p></div>
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px">
+              <label style="display:block"><div style="margin-bottom:4px;font-size:12px;font-weight:500;letter-spacing:.025em;text-transform:uppercase;color:#64748b">M3U Account</div><select onChange="{{ markDirty }}" style="width:100%;border-radius:8px;border:1px solid #1e2a3a;background:#151a22;color:#f1f5f9;padding:8px 10px;font:14px 'DM Sans',sans-serif;outline:none"><option>Apple TV</option><option>All accounts</option></select></label>
+              <label style="display:block"><div style="margin-bottom:4px;font-size:12px;font-weight:500;letter-spacing:.025em;text-transform:uppercase;color:#64748b">Channel Group</div><select onChange="{{ onGroup }}" style="width:100%;border-radius:8px;border:1px solid #1e2a3a;background:#151a22;color:#f1f5f9;padding:8px 10px;font:14px 'DM Sans',sans-serif;outline:none"><option value="mls">MLS Season Pass</option><option value="all">All groups</option></select></label>
+            </div>
+            <label style="display:block"><div style="margin-bottom:4px;font-size:12px;font-weight:500;letter-spacing:.025em;text-transform:uppercase;color:#64748b">Title contains <span style="text-transform:none;letter-spacing:0;font-weight:400">· optional</span></div><input value="{{ contains }}" onChange="{{ onContains }}" placeholder="e.g. (MLS)" style="width:100%;border-radius:8px;border:1px solid #1e2a3a;background:#151a22;color:#f1f5f9;padding:8px 12px;font:12px 'DM Mono',monospace;outline:none" style-focus="border-color:#34d399;box-shadow:0 0 0 2px rgb(52 211 153 / .3)"></label>
+          </div>
+
+          <div style="border-radius:12px;border:1px solid #1e2a3a;background:#151a22;box-shadow:0 1px 3px 0 rgb(0 0 0 / .3);overflow:hidden">
+            <div style="padding:20px;display:flex;flex-direction:column;gap:14px">
+              <div><div style="display:flex;align-items:center;gap:10px"><span style="display:inline-flex;width:22px;height:22px;flex:none;align-items:center;justify-content:center;border-radius:9999px;background:rgb(52 211 153 / .15);color:#34d399;font-size:12px;font-weight:700">2</span><h2 style="margin:0;font-size:16px;font-weight:800;letter-spacing:-0.025em">Title format</h2></div><p style="margin:6px 0 0 32px;font-size:12px;color:#64748b">Click a part of the title, then choose what it is.</p></div>
+              <label style="display:block"><div style="margin-bottom:4px;font-size:12px;font-weight:500;letter-spacing:.025em;text-transform:uppercase;color:#64748b">Example stream</div><select onChange="{{ onSample }}" style="width:100%;border-radius:8px;border:1px solid #1e2a3a;background:#151a22;color:#f1f5f9;padding:8px 10px;font:12px 'DM Mono',monospace;outline:none"><option value="0">(Apple) (MLS) 009 |  New_York vs. St. Louis (2026-09-26 19:25:25)</option><option value="1">(Apple) (MLS) 005 |  Charlotte vs. Chicago  (2026-09-26 19:25:10)</option></select></label>
+
+              <sc-if value="{{ visualMode }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;flex-wrap:wrap;gap:6px 4px;align-items:flex-end">
+                  <sc-for list="{{ tokens }}" as="tok" hint-placeholder-count="10">
+                    <button onClick="{{ tok.onClick }}" style="cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;gap:3px;background:none;border:none;padding:0;margin-right:{{ tok.gap }}">
+                      <span style="height:11px;font:600 9px/11px 'DM Sans',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:{{ tok.labelFg }};padding-left:2px">{{ tok.label }}</span>
+                      <span style="font:13px 'DM Mono',monospace;white-space:pre;padding:5px 8px;border-radius:6px;border:1px solid {{ tok.border }};background:{{ tok.bg }};color:{{ tok.fg }};box-shadow:{{ tok.ring }}">{{ tok.text }}</span>
+                    </button>
+                  </sc-for>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-radius:8px;background:#1c2230;padding:10px 12px">
+                  <span style="font-size:12px;color:#64748b">Selected <span style="font-family:'DM Mono',monospace;color:#f1f5f9;white-space:pre">“{{ selText }}”</span> is</span>
+                  <div style="display:flex;gap:4px;border-radius:8px;background:#0c0f14;padding:3px">
+                    <sc-for list="{{ typeOpts }}" as="opt" hint-placeholder-count="5">
+                      <button onClick="{{ opt.onClick }}" style="cursor:pointer;border:none;padding:5px 10px;border-radius:6px;font:500 12px 'DM Sans',sans-serif;background:{{ opt.bg }};color:{{ opt.fg }}">{{ opt.label }}</button>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ textMode }}" hint-placeholder-val="{{ false }}">
+                <label style="display:block"><div style="margin-bottom:4px;font-size:12px;font-weight:500;letter-spacing:.025em;text-transform:uppercase;color:#64748b">Pattern text</div><input value="{{ pattern }}" onChange="{{ onPatternText }}" spellcheck="false" style="width:100%;border-radius:8px;border:1px solid #1e2a3a;background:#151a22;color:#f1f5f9;padding:8px 12px;font:12px 'DM Mono',monospace;outline:none" style-focus="border-color:#34d399;box-shadow:0 0 0 2px rgb(52 211 153 / .3)"></label>
+                <p style="margin:0;font-size:12px;color:#64748b">Placeholders: <span style="font-family:'DM Mono',monospace;color:#f1f5f9">{home} {away} {time} {n}</span></p>
+              </sc-if>
+
+              <div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;line-height:1.5;color:#f1f5f9">
+                <span style="margin-top:2px;width:14px;height:14px;flex:none;color:{{ sampleColor }};background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/{{ sampleIcon }}.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/{{ sampleIcon }}.svg) center/contain no-repeat"></span>
+                <span>{{ sampleCheck }}</span>
+              </div>
+            </div>
+            <div style="border-top:1px solid #1e2a3a;background:#1c2230;padding:12px 20px;display:flex;align-items:center;gap:12px">
+              <span style="flex:1;min-width:0;font:12px 'DM Mono',monospace;color:#94a3b8;white-space:pre-wrap;word-break:break-word">{{ pattern }}</span>
+              <button onClick="{{ onModeToggle }}" style="cursor:pointer;flex:none;display:inline-flex;align-items:center;gap:6px;border:1px solid #1e2a3a;background:#151a22;color:#f1f5f9;padding:6px 10px;border-radius:6px;font:500 12px 'DM Sans',sans-serif" style-hover="border-color:#64748b"><span style="width:12px;height:12px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/{{ modeIcon }}.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/{{ modeIcon }}.svg) center/contain no-repeat"></span>{{ modeLabel }}</button>
+            </div>
+          </div>
+
+          <div style="border-radius:12px;border:1px solid #1e2a3a;background:#151a22;box-shadow:0 1px 3px 0 rgb(0 0 0 / .3);padding:20px;display:flex;flex-direction:column;gap:14px">
+            <div><div style="display:flex;align-items:center;gap:10px"><span style="display:inline-flex;width:22px;height:22px;flex:none;align-items:center;justify-content:center;border-radius:9999px;background:rgb(52 211 153 / .15);color:#34d399;font-size:12px;font-weight:700">3</span><h2 style="margin:0;font-size:16px;font-weight:800;letter-spacing:-0.025em">Skip variants</h2></div><p style="margin:6px 0 0 32px;font-size:12px;color:#64748b">Titles containing any of these are never routed.</p></div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+              <sc-for list="{{ skipChips }}" as="chip" hint-placeholder-count="1">
+                <span style="display:inline-flex;align-items:center;gap:6px;border-radius:6px;padding:4px 6px 4px 10px;font:12px 'DM Mono',monospace;background:rgb(239 68 68 / .15);color:#ef4444">{{ chip.term }}<button onClick="{{ chip.onRemove }}" aria-label="Remove" style="cursor:pointer;display:flex;border:none;background:none;padding:2px;color:#ef4444;border-radius:4px;opacity:.8" style-hover="opacity:1;background:rgb(239 68 68 / .15)"><span style="width:12px;height:12px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/x.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/x.svg) center/contain no-repeat"></span></button></span>
+              </sc-for>
+              <sc-for list="{{ suggestions }}" as="sug" hint-placeholder-count="1">
+                <button onClick="{{ sug.onAdd }}" title="Seen in your streams" style="cursor:pointer;display:inline-flex;align-items:center;gap:5px;border:1px dashed rgb(239 68 68 / .45);background:none;color:#f1f5f9;border-radius:6px;padding:3px 10px 3px 8px;font:12px 'DM Mono',monospace" style-hover="background:rgb(239 68 68 / .1);border-color:#ef4444"><span style="width:11px;height:11px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/plus.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/plus.svg) center/contain no-repeat"></span>{{ sug.term }}</button>
+              </sc-for>
+              <sc-if value="{{ addingTerm }}" hint-placeholder-val="{{ false }}">
+                <span style="display:inline-flex;align-items:center;gap:4px;border-radius:6px;border:1px solid #34d399;box-shadow:0 0 0 2px rgb(52 211 153 / .3);padding:0 4px 0 8px;background:#151a22">
+                  <input autoFocus="{{ true }}" value="{{ newTerm }}" onChange="{{ onNewTerm }}" onKeyDown="{{ onTermKey }}" onBlur="{{ onTermBlur }}" placeholder="(Alt)" style="width:90px;border:none;background:transparent;color:#f1f5f9;padding:4px 0;font:12px 'DM Mono',monospace;outline:none">
+                  <button onMouseDown="{{ onAddTerm }}" aria-label="Add" style="cursor:pointer;display:flex;border:none;background:none;padding:2px;color:#34d399"><span style="width:12px;height:12px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/check.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/check.svg) center/contain no-repeat"></span></button>
+                </span>
+              </sc-if>
+              <sc-if value="{{ notAddingTerm }}" hint-placeholder-val="{{ true }}">
+                <button onClick="{{ onStartAdd }}" style="cursor:pointer;display:inline-flex;align-items:center;gap:5px;border:1px dashed #1e2a3a;background:none;color:#64748b;border-radius:6px;padding:3px 10px 3px 8px;font:500 12px 'DM Sans',sans-serif" style-hover="color:#f1f5f9;border-color:#64748b"><span style="width:11px;height:11px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/plus.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/plus.svg) center/contain no-repeat"></span>Add</button>
+              </sc-if>
+            </div>
+            <sc-if value="{{ hasSuggestions }}" hint-placeholder-val="{{ true }}"><p style="margin:0;font-size:12px;color:#64748b">Dashed terms were spotted in your streams. Click one to skip it.</p></sc-if>
+          </div>
+        </div>
+
+        <div style="position:sticky;top:24px;display:flex;flex-direction:column;gap:16px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#64748b">Preview</span><span style="font-size:12px;color:#64748b">Updates as you edit · nothing is routed until you save</span></div>
+          <div style="border-radius:12px;border:1px solid #1e2a3a;overflow:hidden">
+            <div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px;border-bottom:1px solid #1e2a3a">
+              <div style="display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap">
+                <div><div style="font-size:30px;line-height:36px;font-weight:800;letter-spacing:-0.025em;color:#22c55e">{{ nOk }}</div><div style="font-size:12px;color:#64748b">ready to route</div></div>
+                <sc-if value="{{ hasConflict }}" hint-placeholder-val="{{ false }}"><div><div style="font-size:30px;line-height:36px;font-weight:800;letter-spacing:-0.025em;color:#f59e0b">{{ nConflict }}</div><div style="font-size:12px;color:#64748b">in conflict</div></div></sc-if>
+                <div style="margin-left:auto;font-size:12px;color:#64748b;text-align:right">{{ streamCount }} streams checked<br>against 5 ESPN games today</div>
+              </div>
+              <div style="display:flex;height:6px;border-radius:9999px;overflow:hidden;gap:2px;background:#1c2230"><sc-for list="{{ bar }}" as="seg" hint-placeholder-count="3"><span style="flex-grow:{{ seg.grow }};flex-basis:0;background:{{ seg.color }}"></span></sc-for></div>
+              <div style="display:flex;gap:4px;border-radius:8px;background:#1c2230;padding:4px;align-self:flex-start;flex-wrap:wrap">
+                <sc-for list="{{ filterTabs }}" as="ft" hint-placeholder-count="4">
+                  <button onClick="{{ ft.onClick }}" style="cursor:pointer;border:none;padding:6px 12px;border-radius:6px;font:500 12px 'DM Sans',sans-serif;background:{{ ft.bg }};color:{{ ft.fg }}">{{ ft.label }}</button>
+                </sc-for>
+              </div>
+            </div>
+            <sc-for list="{{ rows }}" as="row" hint-placeholder-count="6">
+              <div style="padding:12px 20px;display:flex;flex-direction:column;gap:6px;border-bottom:1px solid #1e2a3a">
+                <div style="font:12px/1.6 'DM Mono',monospace;white-space:pre-wrap;word-break:break-word"><sc-for list="{{ row.segs }}" as="seg"><span style="color:{{ seg.fg }};background:{{ seg.bg }};border-radius:3px">{{ seg.text }}</span></sc-for></div>
+                <div style="display:flex;align-items:center;gap:8px;font-size:12px"><span style="flex:none;border-radius:6px;padding:2px 8px;font-size:12px;font-weight:500;background:{{ row.badgeBg }};color:{{ row.badgeFg }}">{{ row.badge }}</span><span style="color:{{ row.statusFg }}">{{ row.status }}</span></div>
+              </div>
+            </sc-for>
+            <sc-if value="{{ noRows }}" hint-placeholder-val="{{ false }}"><div style="padding:24px 20px;font-size:12px;color:#64748b">Nothing in this view.</div></sc-if>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const PH = { n: "(\\d+)", away: "(.+?)", home: "(.+?)", time: "(.+?)", league: "(.+?)" };
+const LABELS = { text: "", home: "Home", away: "Away", time: "Time", n: "Number" };
+const SAMPLES = [
+  [["(Apple)", " ", "text"], ["(MLS)", " ", "text"], ["009", " ", "n"], ["|", "  ", "text"], ["New_York", " ", "home"], ["vs.", " ", "text"], ["St. Louis", " ", "away"], ["(", "", "text"], ["2026-09-26 19:25:25", "", "time"], [")", "", "text"]],
+  [["(Apple)", " ", "text"], ["(MLS)", " ", "text"], ["005", " ", "n"], ["|", "  ", "text"], ["Charlotte", " ", "home"], ["vs.", " ", "text"], ["Chicago", "  ", "away"], ["(", "", "text"], ["2026-09-26 19:25:10", "", "time"], [")", "", "text"]],
+];
+const STREAMS = [
+  { g: "mls", t: "(Apple) (MLS) 009 |  New_York vs. St. Louis (Spanish) (2026-09-26 19:25:25)" },
+  { g: "mls", t: "(Apple) (MLS) 009 |  New_York vs. St. Louis (2026-09-26 19:25:25)" },
+  { g: "mls", t: "(Apple) (MLS) 005 |  Charlotte vs. Chicago  (2026-09-26 19:25:10)" },
+  { g: "mls", t: "(Apple) (MLS) 005 |  Charlotte vs. Chicago (Spanish) (2026-09-26 19:25:10)" },
+  { g: "mls", t: "(Apple) (MLS) 011 |  Atlanta vs. Miami (2026-09-26 19:25:40)" },
+  { g: "mls", t: "(Apple) (MLS) 012 |  Seattle vs. Portland (FR) (2026-09-26 22:25:00)" },
+  { g: "mls", t: "(Apple) (MLS) 012 |  Seattle vs. Portland (2026-09-26 22:25:00)" },
+  { g: "mls", t: "(Apple) (MLS) 020 |  LA Galaxy vs. LAFC (2026-09-27 01:25:00)" },
+  { g: "mls", t: "(Apple) (MLS) 031 | MLS 360 (2026-09-26 19:00:00)" },
+  { g: "nfl", t: "NFL  | 07 - 1pm Titans at Giants" },
+  { g: "nfl", t: "NFL  | 13 - 4:25pm Ravens at Cowboys" },
+];
+const GAMES = [
+  { home: "New York City FC", away: "St. Louis City SC", hs: "NYCFC", as: "St. Louis", time: "7:30 PM", aliases: ["New_York"] },
+  { home: "Charlotte FC", away: "Chicago Fire FC", hs: "Charlotte", as: "Chicago", time: "7:30 PM", aliases: [] },
+  { home: "Atlanta United FC", away: "Inter Miami CF", hs: "Atlanta", as: "Miami", time: "7:30 PM", aliases: [] },
+  { home: "Seattle Sounders FC", away: "Portland Timbers", hs: "Seattle", as: "Portland", time: "10:30 PM", aliases: [] },
+  { home: "LA Galaxy", away: "LAFC", hs: "LA Galaxy", as: "LAFC", time: "1:30 AM", aliases: [] },
+];
+const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const norm = (s) => s.toLowerCase().split(/\s+/).filter(Boolean).join(" ");
+function teamsMatch(a, b, aliases) {
+  const na = norm(a), nb = norm(b);
+  if (!nb) return false;
+  if (na === nb || na.includes(nb) || nb.includes(na)) return true;
+  return (aliases || []).some((x) => { const al = norm(x); return al === nb || al.includes(nb) || nb.includes(al); });
+}
+function compile(p) {
+  let re = "^", last = 0, m; const fields = []; const rx = /\{(\w+)\}/g;
+  while ((m = rx.exec(p))) {
+    if (!PH[m[1]]) return { error: `Unknown placeholder {${m[1]}}` };
+    re += esc(p.slice(last, m.index)) + PH[m[1]]; fields.push(m[1]); last = rx.lastIndex;
+  }
+  re += esc(p.slice(last)) + "$";
+  try { return { re: new RegExp(re, "isd"), fields }; } catch (e) { return { error: String(e) }; }
+}
+
+class Component extends DCLogic {
+  state = { name: "MLS Apple", enabled: true, group: "mls", contains: "(MLS)", sample: 0, types: SAMPLES[0].map((t) => t[2]), sel: 4, textMode: false, patternText: "", skip: ["(Spanish)"], newTerm: "", filter: "all", dirty: false };
+
+  set(p) { this.setState({ ...p, dirty: true }); }
+
+  evaluate(title, compiled) {
+    const lower = title.toLowerCase();
+    const hit = this.state.skip.find((s) => lower.includes(s.toLowerCase()));
+    if (hit) return { kind: "skipped", term: hit };
+    if (compiled.error) return { kind: "error" };
+    const m = compiled.re.exec(title.trim());
+    if (!m) return { kind: "nofit" };
+    const groups = {}, ranges = [];
+    compiled.fields.forEach((f, i) => { groups[f] = (m[i + 1] || "").trim(); if (m.indices && m.indices[i + 1]) ranges.push([...m.indices[i + 1], f]); });
+    if (!groups.home || !groups.away) return { kind: "fit", ranges, groups };
+    const game = GAMES.find((g) => teamsMatch(g.home, groups.home, g.aliases) && teamsMatch(g.away, groups.away, []));
+    if (!game) return { kind: "noteam", ranges, groups };
+    return { kind: "matched", ranges, groups, game };
+  }
+
+  renderVals() {
+    const st = this.state;
+    const toks = SAMPLES[st.sample];
+    const visualPattern = toks.map((t, i) => (st.types[i] === "text" ? t[0] : `{${st.types[i]}}`) + t[1]).join("");
+    const pattern = st.textMode ? st.patternText : visualPattern;
+    const compiled = compile(pattern);
+
+    const pool = STREAMS.filter((s) => (st.group === "all" || s.g === st.group) && (!st.contains || s.t.toLowerCase().includes(st.contains.toLowerCase())));
+    const evals = pool.map((s) => ({ t: s.t, r: this.evaluate(s.t, compiled) }));
+    const perGame = {};
+    evals.forEach((e) => { if (e.r.kind === "matched") perGame[e.r.game.home] = (perGame[e.r.game.home] || 0) + 1; });
+
+    const sugg = new Set();
+    evals.forEach((e) => { const tm = e.r.groups && e.r.groups.time; const mm = tm && /^([A-Za-z ]+)\) \(/.exec(tm); if (mm) sugg.add(`(${mm[1]})`); });
+    const suggestions = [...sugg].filter((s) => !st.skip.some((k) => k.toLowerCase() === s.toLowerCase()));
+
+    const B = { ok: ["rgb(34 197 94 / .15)", "#22c55e"], warn: ["rgb(245 158 11 / .15)", "#f59e0b"], bad: ["rgb(239 68 68 / .15)", "#ef4444"], muted: ["rgb(100 116 139 / .12)", "#94a3b8"] };
+    const describe = (r) => {
+      switch (r.kind) {
+        case "matched": return perGame[r.game.home] > 1
+          ? { badge: "Conflict", b: B.warn, status: `${perGame[r.game.home]} streams fit ${r.game.hs} vs ${r.game.as}. Add a skip term.`, statusFg: "#f1f5f9", group: "matched", tone: "warn" }
+          : { badge: "Matched", b: B.ok, status: `${r.game.hs} vs ${r.game.as} · ${r.game.time}`, statusFg: "#f1f5f9", group: "matched", tone: "ok" };
+        case "skipped": return { badge: "Skipped", b: B.bad, status: `contains ${r.term}`, group: "skipped", tone: "bad" };
+        case "nofit": return { badge: "No fit", b: B.muted, status: "doesn't fit the title format", group: "other", tone: "muted" };
+        case "noteam": return { badge: "No game", b: B.muted, status: `no ESPN game today for “${r.groups.home}” vs “${r.groups.away}”`, group: "other", tone: "muted" };
+        case "fit": return { badge: "Fits", b: B.muted, status: "tag a Home and an Away to check teams", group: "other", tone: "muted" };
+        default: return { badge: "Error", b: B.bad, status: compiled.error || "Pattern error", group: "other", tone: "muted" };
+      }
+    };
+    const FIELD = { home: ["rgb(245 158 11 / .18)", "#fbbf24"], away: ["rgb(59 130 246 / .2)", "#93c5fd"], time: ["rgb(100 116 139 / .22)", "#f1f5f9"], n: ["rgb(100 116 139 / .22)", "#f1f5f9"], league: ["rgb(100 116 139 / .22)", "#f1f5f9"] };
+
+    const all = evals.map((e) => {
+      const d = describe(e.r);
+      const segs = []; let pos = 0; const title = e.t.trim();
+      const dim = e.r.kind === "skipped" || e.r.kind === "nofit";
+      (e.r.ranges || []).slice().sort((a, b) => a[0] - b[0]).forEach(([a, b, f]) => {
+        if (a > pos) segs.push({ text: title.slice(pos, a), fg: "#64748b", bg: "transparent" });
+        const c = FIELD[f] || FIELD.time;
+        segs.push({ text: title.slice(a, b), fg: c[1], bg: c[0] }); pos = b;
+      });
+      if (pos < title.length) segs.push({ text: title.slice(pos), fg: dim ? "#475569" : "#64748b", bg: "transparent" });
+      return { segs, status: d.status, group: d.group, tone: d.tone, badge: d.badge, badgeBg: d.b[0], badgeFg: d.b[1], statusFg: d.statusFg || "#64748b" };
+    });
+    const tone = (t) => all.filter((r) => r.tone === t).length;
+    const total = Math.max(all.length, 1);
+    const bar = [["ok", "#22c55e"], ["warn", "#f59e0b"], ["bad", "#ef4444"], ["muted", "#334155"]].map(([t, c]) => ({ grow: String(tone(t)), color: c })).filter((x) => x.grow !== "0");
+    const nOk = tone("ok"), nConflict = tone("warn");
+    const count = (g) => all.filter((r) => r.group === g).length;
+    const rows = st.filter === "all" ? all : all.filter((r) => r.group === st.filter);
+    const tabs = [["all", `All ${all.length}`], ["matched", `Matched ${count("matched")}`], ["skipped", `Skipped ${count("skipped")}`], ["other", `No match ${count("other")}`]];
+
+    const sampleTitle = toks.map((t) => t[0] + t[1]).join("");
+    const sr = this.evaluate(sampleTitle, compiled);
+    let sampleCheck, sampleIcon = "circle-alert", sampleColor = "#f59e0b";
+    if (sr.kind === "matched") {
+      sampleIcon = "circle-check"; sampleColor = "#22c55e";
+      const via = sr.game.aliases.find((a) => norm(a) === norm(sr.groups.home));
+      sampleCheck = `Lines up with today's ESPN game: ${sr.game.home} (home) vs ${sr.game.away}${via ? `, via the alias “${via}”` : ""}.`;
+    } else if (sr.kind === "skipped") sampleCheck = `This example is skipped because it contains ${sr.term}.`;
+    else if (sr.kind === "nofit") sampleCheck = "The pattern no longer fits this example. Check the parts marked as exact text.";
+    else if (sr.kind === "noteam") sampleCheck = `No ESPN game today has “${sr.groups.home}” at home and “${sr.groups.away}” away. Home and Away may be reversed.`;
+    else if (sr.kind === "fit") sampleCheck = "Tag a Home and an Away so Matcharr can check teams against ESPN.";
+    else sampleCheck = compiled.error || "Pattern error";
+
+    const tokens = toks.map((t, i) => {
+      const ty = st.types[i], selected = i === st.sel, cap = ty !== "text";
+      const team = ty === "home" ? ["#f59e0b", "rgb(245 158 11 / .15)", "#fbbf24"] : ty === "away" ? ["#3b82f6", "rgb(59 130 246 / .18)", "#93c5fd"] : null;
+      return {
+        text: t[0], label: LABELS[ty], gap: t[1].length > 1 ? "8px" : "0px",
+        labelFg: team ? team[2] : "#64748b",
+        border: selected ? "#34d399" : team ? team[0] : cap ? "#64748b" : "#1e2a3a",
+        bg: team ? team[1] : cap ? "#1c2230" : "transparent", fg: cap ? "#f1f5f9" : "#94a3b8",
+        ring: selected ? "0 0 0 2px rgb(52 211 153 / .3)" : "none",
+        onClick: () => this.setState({ sel: i }),
+      };
+    });
+    const typeOpts = ["text", "home", "away", "time", "n"].map((ty) => ({
+      label: ty === "text" ? "Exact text" : LABELS[ty],
+      bg: st.types[st.sel] === ty ? "#1c2230" : "transparent",
+      fg: st.types[st.sel] === ty ? (ty === "home" ? "#fbbf24" : ty === "away" ? "#93c5fd" : "#f1f5f9") : "#64748b",
+      onClick: () => {
+        const types = st.types.slice();
+        if (ty === "home" || ty === "away") types.forEach((x, j) => { if (x === ty && j !== st.sel) types[j] = "text"; });
+        types[st.sel] = ty; this.set({ types });
+      },
+    }));
+
+    const addTerm = (term) => { const t = (term || "").trim(); if (!t || st.skip.includes(t)) { this.setState({ addingTerm: false, newTerm: "" }); return; } this.set({ skip: [...st.skip, t], newTerm: "", addingTerm: false }); };
+
+    return {
+      name: st.name, dirty: st.dirty, saveOpacity: st.dirty ? 1 : 0.5,
+      onName: (e) => this.set({ name: e.target.value }),
+      markDirty: () => this.set({}),
+      onSave: () => this.setState({ dirty: false }),
+      onCancel: () => this.setState({ dirty: false }),
+      onToggle: () => this.set({ enabled: !st.enabled }),
+      toggleBg: st.enabled ? "#34d399" : "#1e2a3a", toggleX: st.enabled ? "translateX(18px)" : "translateX(3px)",
+      enabledLabel: st.enabled ? "Enabled" : "Disabled",
+      onGroup: (e) => this.set({ group: e.target.value }),
+      contains: st.contains, onContains: (e) => this.set({ contains: e.target.value }),
+      streamCount: pool.length,
+      onSample: (e) => { const s = +e.target.value; this.setState({ sample: s, types: SAMPLES[s].map((t) => t[2]), sel: 4, textMode: false }); },
+      visualMode: !st.textMode, textMode: st.textMode,
+      tokens, typeOpts, selText: toks[st.sel][0],
+      pattern, onPatternText: (e) => this.set({ patternText: e.target.value }),
+      onModeToggle: () => this.setState({ textMode: !st.textMode, patternText: visualPattern }),
+      modeLabel: st.textMode ? "Back to visual" : "Edit as text", modeIcon: st.textMode ? "mouse-pointer-click" : "pencil",
+      sampleCheck, sampleIcon, sampleColor, bar, nOk, nConflict, hasConflict: nConflict > 0,
+      skipChips: st.skip.map((term) => ({ term, onRemove: () => this.set({ skip: st.skip.filter((s) => s !== term) }) })),
+      newTerm: st.newTerm, onNewTerm: (e) => this.setState({ newTerm: e.target.value }),
+      onTermKey: (e) => { if (e.key === "Enter") addTerm(st.newTerm); if (e.key === "Escape") this.setState({ addingTerm: false, newTerm: "" }); },
+      onAddTerm: (e) => { e.preventDefault(); addTerm(st.newTerm); },
+      onTermBlur: () => addTerm(st.newTerm),
+      onStartAdd: () => this.setState({ addingTerm: true }),
+      addingTerm: !!st.addingTerm, notAddingTerm: !st.addingTerm,
+      suggestions: suggestions.map((term) => ({ term, onAdd: () => addTerm(term) })), hasSuggestions: suggestions.length > 0,
+      nMatched: count("matched"),
+      filterTabs: tabs.map(([id, label]) => ({ label, bg: st.filter === id ? "#151a22" : "transparent", fg: st.filter === id ? "#f1f5f9" : "#64748b", onClick: () => this.setState({ filter: id }) })),
+      rows, noRows: rows.length === 0,
+    };
+  }
+}
+</script>
+</body>
+</html>

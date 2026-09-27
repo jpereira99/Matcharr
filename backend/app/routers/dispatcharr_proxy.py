@@ -32,6 +32,34 @@ async def da_channels(
         raise HTTPException(502, str(e)) from e
 
 
+@router.get("/m3u-accounts")
+async def da_m3u_accounts() -> list[dict[str, Any]]:
+    client = await _client()
+    try:
+        rows = await client.list_m3u_accounts()
+    except Exception as e:
+        raise HTTPException(502, str(e)) from e
+    return [
+        {
+            "id": r.get("id"),
+            "name": r.get("name") or f"Account {r.get('id')}",
+            "is_active": r.get("is_active", True),
+        }
+        for r in rows
+        if r.get("id") is not None
+    ]
+
+
+@router.get("/stream-groups")
+async def da_stream_groups() -> list[str]:
+    """Channel group names that contain streams."""
+    client = await _client()
+    try:
+        return await client.list_stream_group_names()
+    except Exception as e:
+        raise HTTPException(502, str(e)) from e
+
+
 @router.get("/streams")
 async def da_streams(
     name: str = Query("", description="Name contains filter")

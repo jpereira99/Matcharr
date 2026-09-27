@@ -8,9 +8,11 @@ type BadgeVariant =
   | "danger"
   | "info"
   | "accent"
+  | "override"
   | "muted";
 
 const variantStyles: Record<BadgeVariant, string> = {
+  override: "bg-(--color-override)/15 text-(--color-override)",
   default: "bg-(--color-surface-raised) text-(--color-foreground)",
   success: "bg-(--color-success)/15 text-(--color-success)",
   warning: "bg-(--color-warning)/15 text-(--color-warning)",
@@ -19,6 +21,8 @@ const variantStyles: Record<BadgeVariant, string> = {
   accent: "bg-(--color-accent)/15 text-(--color-accent)",
   muted: "bg-(--color-muted)/10 text-(--color-muted)",
 };
+
+export type { BadgeVariant };
 
 export function Badge({
   children,

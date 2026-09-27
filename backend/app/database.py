@@ -24,6 +24,9 @@ CREATE TABLE IF NOT EXISTS league_profiles (
     espn_sport TEXT NOT NULL,
     espn_league TEXT NOT NULL,
     enabled INTEGER NOT NULL DEFAULT 1,
+    exclude_terms_json TEXT NOT NULL DEFAULT '[]',
+    m3u_account_id INTEGER,
+    channel_group TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -68,7 +71,26 @@ CREATE TABLE IF NOT EXISTS switch_log (
 );
 
 CREATE INDEX IF NOT EXISTS idx_switch_log_time ON switch_log(switched_at DESC);
+
+-- One-game manual stream choice; removed once the game is over.
+CREATE TABLE IF NOT EXISTS stream_overrides (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    team_channel_id INTEGER NOT NULL REFERENCES team_channels(id) ON DELETE CASCADE,
+    espn_event_id TEXT NOT NULL,
+    stream_id INTEGER NOT NULL,
+    stream_name TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(team_channel_id, espn_event_id)
+);
 """
+
+# (table, column, DDL) for columns added after the first release.
+_COLUMN_MIGRATIONS: list[tuple[str, str, str]] = [
+    ("team_channels", "espn_team_abbr", "TEXT NOT NULL DEFAULT ''"),
+    ("league_profiles", "exclude_terms_json", "TEXT NOT NULL DEFAULT '[]'"),
+    ("league_profiles", "m3u_account_id", "INTEGER"),
+    ("league_profiles", "channel_group", "TEXT NOT NULL DEFAULT ''"),
+]
 
 
 async def init_db() -> None:
@@ -76,13 +98,11 @@ async def init_db() -> None:
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     async with aiosqlite.connect(settings.database_path) as db:
         await db.executescript(SCHEMA)
-        # Migrate: add espn_team_abbr if missing (existing DBs)
-        cur = await db.execute("PRAGMA table_info(team_channels)")
-        cols = {row[1] for row in await cur.fetchall()}
-        if "espn_team_abbr" not in cols:
-            await db.execute(
-                "ALTER TABLE team_channels ADD COLUMN espn_team_abbr TEXT NOT NULL DEFAULT ''"
-            )
+        for table, column, ddl in _COLUMN_MIGRATIONS:
+            cur = await db.execute(f"PRAGMA table_info({table})")
+            cols = {row[1] for row in await cur.fetchall()}
+            if column not in cols:
+                await db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}")
         await db.commit()
 
 

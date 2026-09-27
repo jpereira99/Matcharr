@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&amp;family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&amp;display=swap" rel="stylesheet">
+<style>body{margin:0;background:#0c0f14;color:#f1f5f9;font-family:"DM Sans",Inter,ui-sans-serif,system-ui,sans-serif;-webkit-font-smoothing:antialiased}a{color:#34d399}a:hover{color:#6ee7b7}*{box-sizing:border-box}</style>
+</helmet>
+<div style="display:flex;min-height:100vh">
+  <aside style="position:sticky;top:0;height:100vh;width:260px;flex:none;display:flex;flex-direction:column;border-right:1px solid #1e2a3a;background:#090c10">
+    <div style="display:flex;align-items:center;gap:12px;border-bottom:1px solid #1e2a3a;padding:20px 16px">
+      <div style="display:flex;width:36px;height:36px;flex:none;align-items:center;justify-content:center;border-radius:12px;background:#34d399;box-shadow:0 4px 6px -1px rgb(0 0 0 / .1);color:#022c22"><span style="width:18px;height:18px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/radio.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/radio.svg) center/contain no-repeat"></span></div>
+      <div><div style="font-size:14px;font-weight:800;letter-spacing:-0.025em">Matcharr</div><div style="font-size:10px;color:#64748b">Stream Router</div></div>
+    </div>
+    <nav style="display:flex;flex:1;flex-direction:column;gap:2px;padding:8px">
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;color:#64748b"><span style="width:16px;height:16px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/layout-dashboard.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/layout-dashboard.svg) center/contain no-repeat"></span><span style="font-size:14px;font-weight:500">Dashboard</span></div>
+      <sc-if value="{{ isProfiles }}" hint-placeholder-val="{{ true }}">
+        <div style="position:relative;display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;color:#34d399;background:rgb(52 211 153 / .1)"><span style="position:absolute;left:0;top:50%;height:20px;width:3px;transform:translateY(-50%);border-radius:0 9999px 9999px 0;background:#34d399"></span><span style="width:16px;height:16px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/trophy.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/trophy.svg) center/contain no-repeat"></span><span style="font-size:14px;font-weight:500">League Profiles</span></div>
+        <div onClick="{{ goTeams }}" style="cursor:pointer;display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;color:#64748b" style-hover="background:#1c2230;color:#f1f5f9"><span style="width:16px;height:16px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/users.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/users.svg) center/contain no-repeat"></span><span style="font-size:14px;font-weight:500">Team Channels</span></div>
+      </sc-if>
+      <sc-if value="{{ isTeams }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ goProfiles }}" style="cursor:pointer;display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;color:#64748b" style-hover="background:#1c2230;color:#f1f5f9"><span style="width:16px;height:16px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/trophy.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/trophy.svg) center/contain no-repeat"></span><span style="font-size:14px;font-weight:500">League Profiles</span></div>
+        <div style="position:relative;display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;color:#34d399;background:rgb(52 211 153 / .1)"><span style="position:absolute;left:0;top:50%;height:20px;width:3px;transform:translateY(-50%);border-radius:0 9999px 9999px 0;background:#34d399"></span><span style="width:16px;height:16px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/users.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/users.svg) center/contain no-repeat"></span><span style="font-size:14px;font-weight:500">Team Channels</span></div>
+      </sc-if>
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;color:#64748b"><span style="width:16px;height:16px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/activity.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/activity.svg) center/contain no-repeat"></span><span style="font-size:14px;font-weight:500">Activity Log</span></div>
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;color:#64748b"><span style="width:16px;height:16px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/settings.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/settings.svg) center/contain no-repeat"></span><span style="font-size:14px;font-weight:500">Settings</span></div>
+    </nav>
+    <div style="border-top:1px solid #1e2a3a;padding:8px"><div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;font-size:12px;font-weight:500;color:#64748b"><span style="width:16px;height:16px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/moon.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/moon.svg) center/contain no-repeat"></span><span>Dark</span></div></div>
+    <div style="position:absolute;top:28px;right:-12px;z-index:20;display:flex;width:24px;height:24px;align-items:center;justify-content:center;border-radius:9999px;border:1px solid #1e2a3a;background:#151a22;color:#64748b;box-shadow:0 1px 2px 0 rgb(0 0 0 / .05)"><span style="width:12px;height:12px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/chevron-left.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/chevron-left.svg) center/contain no-repeat"></span></div>
+  </aside>
+  <main style="flex:1;min-width:0;overflow:auto;padding:40px">
+    <div style="margin:0 auto;max-width:1152px">
+      <sc-if value="{{ isProfiles }}" hint-placeholder-val="{{ true }}">
+        <div data-screen-label="League Profiles (current)" style="display:flex;flex-direction:column;gap:24px">
+          <header style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap">
+            <div><h1 style="margin:0;font-size:24px;line-height:32px;font-weight:800;letter-spacing:-0.025em">League Profiles</h1><p style="margin:4px 0 0;font-size:14px;line-height:20px;color:#64748b">Define stream patterns and ESPN league mappings.</p></div>
+            <div style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:6px;background:#34d399;color:#022c22;font-size:12px;font-weight:500;box-shadow:0 1px 2px 0 rgb(0 0 0 / .05)"><span style="width:14px;height:14px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/plus.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/plus.svg) center/contain no-repeat"></span>Create Profile</div>
+          </header>
+          <div style="display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(min(100%,420px),1fr))">
+            <div style="display:flex;flex-direction:column;border-radius:12px;border:1px solid #1e2a3a;padding:20px;background:#151a22;box-shadow:0 1px 3px 0 rgb(0 0 0 / .3),0 1px 2px -1px rgb(0 0 0 / .3)">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+                <div style="display:flex;min-width:0;align-items:center;gap:8px"><span style="display:inline-flex;align-items:center;gap:6px;border-radius:6px;background:#1c2230;padding:2px 8px;font-size:12px;line-height:16px;font-weight:500;color:#64748b"><img src="https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png" width="20" height="20" style="object-fit:contain">NFL</span><h3 style="margin:0;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">NFL Sunday</h3></div>
+                <div style="position:relative;display:inline-flex;height:20px;width:36px;flex:none;align-items:center;border-radius:9999px;background:#34d399"><span style="display:inline-block;height:14px;width:14px;border-radius:9999px;background:#fff;transform:translateX(18px);box-shadow:0 1px 3px rgb(0 0 0 / .1)"></span></div>
+              </div>
+              <div style="margin-top:12px;border-radius:6px;background:#1c2230;padding:8px 12px;font-family:'DM Mono',monospace;font-size:12px;line-height:16px;word-break:break-all;white-space:pre-wrap">NFL  | {n} - {time} {away} at {home}</div>
+              <div style="margin-top:8px;font-size:12px;color:#64748b">Filter: <span style="font-family:'DM Mono',monospace;color:#f1f5f9;white-space:pre">NFL  |</span></div>
+              <div style="margin-top:auto;display:flex;align-items:center;justify-content:space-between;padding-top:16px">
+                <span style="display:inline-flex;align-items:center;border-radius:6px;padding:2px 8px;font-size:12px;line-height:16px;font-weight:500;background:rgb(100 116 139 / .1);color:#64748b">2 teams mapped</span>
+                <div style="display:flex;gap:4px;color:#64748b"><span style="padding:6px;display:flex"><span style="width:14px;height:14px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/pencil.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/pencil.svg) center/contain no-repeat"></span></span><span style="padding:6px;display:flex"><span style="width:14px;height:14px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/trash-2.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/trash-2.svg) center/contain no-repeat"></span></span></div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;border-radius:12px;border:1px solid #1e2a3a;padding:20px;background:#151a22;box-shadow:0 1px 3px 0 rgb(0 0 0 / .3),0 1px 2px -1px rgb(0 0 0 / .3)">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+                <div style="display:flex;min-width:0;align-items:center;gap:8px"><span style="display:inline-flex;align-items:center;gap:6px;border-radius:6px;background:#1c2230;padding:2px 8px;font-size:12px;line-height:16px;font-weight:500;color:#64748b"><img src="https://a.espncdn.com/i/teamlogos/leagues/500/mls.png" width="20" height="20" style="object-fit:contain">USA.1</span><h3 style="margin:0;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">MLS Apple</h3></div>
+                <div style="position:relative;display:inline-flex;height:20px;width:36px;flex:none;align-items:center;border-radius:9999px;background:#34d399"><span style="display:inline-block;height:14px;width:14px;border-radius:9999px;background:#fff;transform:translateX(18px);box-shadow:0 1px 3px rgb(0 0 0 / .1)"></span></div>
+              </div>
+              <div style="margin-top:12px;border-radius:6px;background:#1c2230;padding:8px 12px;font-family:'DM Mono',monospace;font-size:12px;line-height:16px;word-break:break-all;white-space:pre-wrap">(Apple) (MLS) {n} |  {away} vs. {home} ({time})</div>
+              <div style="margin-top:8px;font-size:12px;color:#64748b">Filter: <span style="font-family:'DM Mono',monospace;color:#f1f5f9">(MLS)</span></div>
+              <div style="margin-top:auto;display:flex;align-items:center;justify-content:space-between;padding-top:16px">
+                <span style="display:inline-flex;align-items:center;border-radius:6px;padding:2px 8px;font-size:12px;line-height:16px;font-weight:500;background:rgb(100 116 139 / .1);color:#64748b">2 teams mapped</span>
+                <div style="display:flex;gap:4px;color:#64748b"><span style="padding:6px;display:flex"><span style="width:14px;height:14px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/pencil.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/pencil.svg) center/contain no-repeat"></span></span><span style="padding:6px;display:flex"><span style="width:14px;height:14px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/trash-2.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/trash-2.svg) center/contain no-repeat"></span></span></div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;border-radius:12px;border:1px solid #1e2a3a;padding:20px;background:#151a22;box-shadow:0 1px 3px 0 rgb(0 0 0 / .3),0 1px 2px -1px rgb(0 0 0 / .3)">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+                <div style="display:flex;min-width:0;align-items:center;gap:8px"><span style="display:inline-flex;align-items:center;gap:6px;border-radius:6px;background:#1c2230;padding:2px 8px;font-size:12px;line-height:16px;font-weight:500;color:#64748b"><img src="https://a.espncdn.com/i/teamlogos/leagues/500/mlb.png" width="20" height="20" style="object-fit:contain">MLB</span><h3 style="margin:0;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">MLB Streams</h3></div>
+                <div style="position:relative;display:inline-flex;height:20px;width:36px;flex:none;align-items:center;border-radius:9999px;background:#34d399"><span style="display:inline-block;height:14px;width:14px;border-radius:9999px;background:#fff;transform:translateX(18px);box-shadow:0 1px 3px rgb(0 0 0 / .1)"></span></div>
+              </div>
+              <div style="margin-top:12px;border-radius:6px;background:#1c2230;padding:8px 12px;font-family:'DM Mono',monospace;font-size:12px;line-height:16px;word-break:break-all">MLB {n} : {away} x {home} start:{time}</div>
+              <div style="margin-top:8px;font-size:12px;color:#64748b">Filter: <span style="font-family:'DM Mono',monospace;color:#f1f5f9">MLB</span></div>
+              <div style="margin-top:auto;display:flex;align-items:center;justify-content:space-between;padding-top:16px">
+                <span style="display:inline-flex;align-items:center;border-radius:6px;padding:2px 8px;font-size:12px;line-height:16px;font-weight:500;background:rgb(100 116 139 / .1);color:#64748b">2 teams mapped</span>
+                <div style="display:flex;gap:4px;color:#64748b"><span style="padding:6px;display:flex"><span style="width:14px;height:14px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/pencil.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/pencil.svg) center/contain no-repeat"></span></span><span style="padding:6px;display:flex"><span style="width:14px;height:14px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/trash-2.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/trash-2.svg) center/contain no-repeat"></span></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ isTeams }}" hint-placeholder-val="{{ false }}">
+        <div data-screen-label="Team Channels (current)" style="display:flex;flex-direction:column;gap:24px">
+          <header style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap">
+            <div><h1 style="margin:0;font-size:24px;line-height:32px;font-weight:800;letter-spacing:-0.025em">Team Channels</h1><p style="margin:4px 0 0;font-size:14px;line-height:20px;color:#64748b">Map ESPN teams to Dispatcharr channels.</p></div>
+            <div style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:6px;background:#34d399;color:#022c22;font-size:12px;font-weight:500"><span style="width:14px;height:14px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/plus.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/plus.svg) center/contain no-repeat"></span>Add Team</div>
+          </header>
+          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+            <div style="display:flex;flex:1;min-width:0;gap:4px;border-radius:8px;background:#1c2230;padding:4px">
+              <span style="padding:6px 12px;border-radius:6px;font-size:12px;font-weight:500;background:#151a22;color:#f1f5f9;box-shadow:0 1px 2px 0 rgb(0 0 0 / .05)">All</span>
+              <span style="padding:6px 12px;border-radius:6px;font-size:12px;font-weight:500;color:#64748b">NFL Sunday</span>
+              <span style="padding:6px 12px;border-radius:6px;font-size:12px;font-weight:500;color:#64748b">MLS Apple</span>
+              <span style="padding:6px 12px;border-radius:6px;font-size:12px;font-weight:500;color:#64748b">MLB Streams</span>
+            </div>
+            <div style="position:relative;width:256px"><span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:#64748b;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/search.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/search.svg) center/contain no-repeat"></span><div style="width:100%;border-radius:8px;border:1px solid #1e2a3a;background:#151a22;padding:6px 10px 6px 36px;font-size:12px;line-height:16px;color:#64748b">Filter teams...</div></div>
+          </div>
+          <div style="display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))">
+            <div style="display:flex;flex-direction:column;border-radius:12px;border:1px solid #1e2a3a;padding:20px;background:#151a22;box-shadow:0 1px 3px 0 rgb(0 0 0 / .3),0 1px 2px -1px rgb(0 0 0 / .3)">
+              <div style="display:flex;align-items:flex-start;gap:12px"><img src="https://a.espncdn.com/i/teamlogos/nfl/500-dark/nyg.png" width="40" height="40" style="object-fit:contain;flex:none"><div style="min-width:0;flex:1"><div style="display:flex;align-items:center;gap:8px"><h3 style="margin:0;font-size:14px;font-weight:600">New York Giants</h3><span style="width:8px;height:8px;border-radius:9999px;background:#22c55e"></span></div><div style="display:flex;align-items:center;gap:6px"><span style="display:inline-flex;align-items:center;gap:6px;border-radius:6px;background:#1c2230;padding:2px 8px;font-size:12px;font-weight:500;color:#64748b"><img src="https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png" width="14" height="14">NFL</span><p style="margin:0;font-size:12px;color:#64748b">NFL Sunday</p></div></div></div>
+              <div style="margin-top:12px;display:flex;align-items:center;gap:8px;font-size:12px;color:#64748b"><span style="width:12px;height:12px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/link-2.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/link-2.svg) center/contain no-repeat"></span><span>Channel <span style="font-family:'DM Mono',monospace;color:#f1f5f9">101</span></span></div>
+              <div style="margin-top:auto;padding-top:12px;height:38px"></div>
+            </div>
+            <div style="display:flex;flex-direction:column;border-radius:12px;border:1px solid #1e2a3a;padding:20px;background:#151a22;box-shadow:0 1px 3px 0 rgb(0 0 0 / .3),0 1px 2px -1px rgb(0 0 0 / .3)">
+              <div style="display:flex;align-items:flex-start;gap:12px"><img src="https://a.espncdn.com/i/teamlogos/nfl/500-dark/dal.png" width="40" height="40" style="object-fit:contain;flex:none"><div style="min-width:0;flex:1"><div style="display:flex;align-items:center;gap:8px"><h3 style="margin:0;font-size:14px;font-weight:600">Dallas Cowboys</h3><span style="width:8px;height:8px;border-radius:9999px;background:#22c55e"></span></div><div style="display:flex;align-items:center;gap:6px"><span style="display:inline-flex;align-items:center;gap:6px;border-radius:6px;background:#1c2230;padding:2px 8px;font-size:12px;font-weight:500;color:#64748b"><img src="https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png" width="14" height="14">NFL</span><p style="margin:0;font-size:12px;color:#64748b">NFL Sunday</p></div></div></div>
+              <div style="margin-top:12px;display:flex;align-items:center;gap:8px;font-size:12px;color:#64748b"><span style="width:12px;height:12px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/link-2.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/link-2.svg) center/contain no-repeat"></span><span>Channel <span style="font-family:'DM Mono',monospace;color:#f1f5f9">102</span></span></div>
+              <div style="margin-top:auto;padding-top:12px;height:38px"></div>
+            </div>
+            <div style="display:flex;flex-direction:column;border-radius:12px;border:1px solid #1e2a3a;padding:20px;background:#151a22;box-shadow:0 1px 3px 0 rgb(0 0 0 / .3),0 1px 2px -1px rgb(0 0 0 / .3)">
+              <div style="display:flex;align-items:flex-start;gap:12px"><img src="https://a.espncdn.com/i/teamlogos/soccer/500/17606.png" width="40" height="40" style="object-fit:contain;flex:none"><div style="min-width:0;flex:1"><div style="display:flex;align-items:center;gap:8px"><h3 style="margin:0;font-size:14px;font-weight:600">New York City FC</h3><span style="width:8px;height:8px;border-radius:9999px;background:#22c55e"></span></div><div style="display:flex;align-items:center;gap:6px"><span style="display:inline-flex;align-items:center;gap:6px;border-radius:6px;background:#1c2230;padding:2px 8px;font-size:12px;font-weight:500;color:#64748b"><img src="https://a.espncdn.com/i/teamlogos/leagues/500/mls.png" width="14" height="14">USA.1</span><p style="margin:0;font-size:12px;color:#64748b">MLS Apple</p></div></div></div>
+              <div style="margin-top:12px;display:flex;align-items:center;gap:8px;font-size:12px;color:#64748b"><span style="width:12px;height:12px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/link-2.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/link-2.svg) center/contain no-repeat"></span><span>Channel <span style="font-family:'DM Mono',monospace;color:#f1f5f9">103</span></span></div>
+              <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px"><span style="border-radius:6px;padding:2px 8px;font-size:12px;font-weight:500;background:rgb(100 116 139 / .1);color:#64748b">New_York</span><span style="border-radius:6px;padding:2px 8px;font-size:12px;font-weight:500;background:rgb(100 116 139 / .1);color:#64748b">NYCFC</span></div>
+              <div style="margin-top:auto;padding-top:12px;height:38px"></div>
+            </div>
+            <div style="display:flex;flex-direction:column;border-radius:12px;border:1px solid #1e2a3a;padding:20px;background:#151a22;box-shadow:0 1px 3px 0 rgb(0 0 0 / .3),0 1px 2px -1px rgb(0 0 0 / .3)">
+              <div style="display:flex;align-items:flex-start;gap:12px"><img src="https://a.espncdn.com/i/teamlogos/soccer/500/21300.png" width="40" height="40" style="object-fit:contain;flex:none"><div style="min-width:0;flex:1"><div style="display:flex;align-items:center;gap:8px"><h3 style="margin:0;font-size:14px;font-weight:600">Charlotte FC</h3><span style="width:8px;height:8px;border-radius:9999px;background:#22c55e"></span></div><div style="display:flex;align-items:center;gap:6px"><span style="display:inline-flex;align-items:center;gap:6px;border-radius:6px;background:#1c2230;padding:2px 8px;font-size:12px;font-weight:500;color:#64748b"><img src="https://a.espncdn.com/i/teamlogos/leagues/500/mls.png" width="14" height="14">USA.1</span><p style="margin:0;font-size:12px;color:#64748b">MLS Apple</p></div></div></div>
+              <div style="margin-top:12px;display:flex;align-items:center;gap:8px;font-size:12px;color:#64748b"><span style="width:12px;height:12px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/link-2.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/link-2.svg) center/contain no-repeat"></span><span>Channel <span style="font-family:'DM Mono',monospace;color:#f1f5f9">104</span></span></div>
+              <div style="margin-top:auto;padding-top:12px;height:38px"></div>
+            </div>
+            <div style="display:flex;flex-direction:column;border-radius:12px;border:1px solid #1e2a3a;padding:20px;background:#151a22;box-shadow:0 1px 3px 0 rgb(0 0 0 / .3),0 1px 2px -1px rgb(0 0 0 / .3)">
+              <div style="display:flex;align-items:flex-start;gap:12px"><img src="https://a.espncdn.com/i/teamlogos/mlb/500-dark/col.png" width="40" height="40" style="object-fit:contain;flex:none"><div style="min-width:0;flex:1"><div style="display:flex;align-items:center;gap:8px"><h3 style="margin:0;font-size:14px;font-weight:600">Colorado Rockies</h3><span style="width:8px;height:8px;border-radius:9999px;background:#22c55e"></span></div><div style="display:flex;align-items:center;gap:6px"><span style="display:inline-flex;align-items:center;gap:6px;border-radius:6px;background:#1c2230;padding:2px 8px;font-size:12px;font-weight:500;color:#64748b"><img src="https://a.espncdn.com/i/teamlogos/leagues/500/mlb.png" width="14" height="14">MLB</span><p style="margin:0;font-size:12px;color:#64748b">MLB Streams</p></div></div></div>
+              <div style="margin-top:12px;display:flex;align-items:center;gap:8px;font-size:12px;color:#64748b"><span style="width:12px;height:12px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/link-2.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/link-2.svg) center/contain no-repeat"></span><span>Channel <span style="font-family:'DM Mono',monospace;color:#f1f5f9">105</span></span></div>
+              <div style="margin-top:auto;padding-top:12px;height:38px"></div>
+            </div>
+            <div style="display:flex;flex-direction:column;border-radius:12px;border:1px solid #1e2a3a;padding:20px;background:#151a22;box-shadow:0 1px 3px 0 rgb(0 0 0 / .3),0 1px 2px -1px rgb(0 0 0 / .3)">
+              <div style="display:flex;align-items:flex-start;gap:12px"><img src="https://a.espncdn.com/i/teamlogos/mlb/500-dark/chw.png" width="40" height="40" style="object-fit:contain;flex:none"><div style="min-width:0;flex:1"><div style="display:flex;align-items:center;gap:8px"><h3 style="margin:0;font-size:14px;font-weight:600">Chicago White Sox</h3><span style="width:8px;height:8px;border-radius:9999px;background:#ef4444"></span></div><div style="display:flex;align-items:center;gap:6px"><span style="display:inline-flex;align-items:center;gap:6px;border-radius:6px;background:#1c2230;padding:2px 8px;font-size:12px;font-weight:500;color:#64748b"><img src="https://a.espncdn.com/i/teamlogos/leagues/500/mlb.png" width="14" height="14">MLB</span><p style="margin:0;font-size:12px;color:#64748b">MLB Streams</p></div></div></div>
+              <div style="margin-top:12px;display:flex;align-items:center;gap:8px;font-size:12px;color:#64748b"><span style="width:12px;height:12px;background:currentColor;-webkit-mask:url(https://unpkg.com/lucide-static@0.469.0/icons/link-2.svg) center/contain no-repeat;mask:url(https://unpkg.com/lucide-static@0.469.0/icons/link-2.svg) center/contain no-repeat"></span><span>Channel <span style="font-family:'DM Mono',monospace;color:#f1f5f9">106</span></span></div>
+              <div style="margin-top:auto;padding-top:12px;height:38px"></div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { screen: "profiles" };
+  renderVals() {
+    const s = this.state.screen;
+    return {
+      isProfiles: s === "profiles",
+      isTeams: s === "teams",
+      goProfiles: () => this.setState({ screen: "profiles" }),
+      goTeams: () => this.setState({ screen: "teams" }),
+    };
+  }
+}
+</script>
+</body>
+</html>

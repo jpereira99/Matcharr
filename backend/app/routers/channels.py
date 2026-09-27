@@ -3,14 +3,30 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 
 from app.database import get_db
-from app.models import TeamChannelCreate, TeamChannelOut, TeamChannelUpdate
+from app.models import (
+    StreamOverrideIn,
+    TeamChannelCreate,
+    TeamChannelOut,
+    TeamChannelUpdate,
+)
+from app.services.matcher import route_team_now, team_games, team_status
 
 router = APIRouter(prefix="/team-channels", tags=["team-channels"])
+logger = logging.getLogger(__name__)
+
+
+async def _route_in_background(tc_id: int) -> None:
+    try:
+        async with get_db() as db:
+            await route_team_now(db, tc_id)
+    except Exception:
+        logger.exception("Immediate routing for team channel %s failed", tc_id)
 
 
 def _aliases_load(raw: str | None) -> list[str]:
@@ -43,6 +59,68 @@ async def list_team_channels() -> list[TeamChannelOut]:
         cur = await db.execute("SELECT * FROM team_channels ORDER BY id")
         rows = await cur.fetchall()
     return [_row_out(dict(r)) for r in rows]
+
+
+@router.get("/status")
+async def get_team_status() -> dict[str, Any]:
+    """Per team: next game, routing status, chosen stream and any override."""
+    async with get_db() as db:
+        return await team_status(db)
+
+
+@router.get("/{tc_id}/games")
+async def get_team_games(tc_id: int) -> dict[str, Any]:
+    """Upcoming games for one team, each with ranked candidate streams and reasons."""
+    async with get_db() as db:
+        out = await team_games(db, tc_id)
+    if out is None:
+        raise HTTPException(404, "Not found")
+    return out
+
+
+@router.put("/{tc_id}/overrides/{espn_event_id}")
+async def put_override(
+    tc_id: int,
+    espn_event_id: str,
+    body: StreamOverrideIn,
+    background: BackgroundTasks,
+) -> dict[str, Any]:
+    async with get_db() as db:
+        cur = await db.execute("SELECT id FROM team_channels WHERE id = ?", (tc_id,))
+        if not await cur.fetchone():
+            raise HTTPException(404, "Not found")
+        await db.execute(
+            """
+            INSERT INTO stream_overrides(team_channel_id, espn_event_id, stream_id, stream_name)
+            VALUES(?,?,?,?)
+            ON CONFLICT(team_channel_id, espn_event_id) DO UPDATE SET
+                stream_id = excluded.stream_id,
+                stream_name = excluded.stream_name,
+                created_at = datetime('now')
+            """,
+            (tc_id, espn_event_id, body.stream_id, body.stream_name),
+        )
+        await db.commit()
+    background.add_task(_route_in_background, tc_id)
+    return {
+        "team_channel_id": tc_id,
+        "espn_event_id": espn_event_id,
+        "stream_id": body.stream_id,
+    }
+
+
+@router.delete("/{tc_id}/overrides/{espn_event_id}")
+async def delete_override(
+    tc_id: int, espn_event_id: str, background: BackgroundTasks
+) -> dict[str, str]:
+    async with get_db() as db:
+        await db.execute(
+            "DELETE FROM stream_overrides WHERE team_channel_id = ? AND espn_event_id = ?",
+            (tc_id, espn_event_id),
+        )
+        await db.commit()
+    background.add_task(_route_in_background, tc_id)
+    return {"status": "ok"}
 
 
 @router.post("", response_model=TeamChannelOut)
@@ -80,6 +158,7 @@ async def create_team_channel(body: TeamChannelCreate) -> TeamChannelOut:
 
 
 @router.put("/{tc_id}", response_model=TeamChannelOut)
+@router.patch("/{tc_id}", response_model=TeamChannelOut)
 async def update_team_channel(tc_id: int, body: TeamChannelUpdate) -> TeamChannelOut:
     async with get_db() as db:
         cur = await db.execute("SELECT * FROM team_channels WHERE id = ?", (tc_id,))
@@ -123,6 +202,9 @@ async def update_team_channel(tc_id: int, body: TeamChannelUpdate) -> TeamChanne
 @router.delete("/{tc_id}")
 async def delete_team_channel(tc_id: int) -> dict[str, str]:
     async with get_db() as db:
+        await db.execute(
+            "DELETE FROM stream_overrides WHERE team_channel_id = ?", (tc_id,)
+        )
         await db.execute("DELETE FROM team_channels WHERE id = ?", (tc_id,))
         await db.commit()
     return {"status": "ok"}

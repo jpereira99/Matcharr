@@ -159,52 +159,69 @@ class DispatcharrClient:
             return False, f"HTTP {r.status_code}", detail
         return True, "OK", None
 
-    async def list_streams(
-        self, name_contains: str = "", page_size: int = 500
-    ) -> list[dict[str, Any]]:
-        base = f"{self.base_url}/api/channels/streams/"
-        params: dict[str, Any] = {"page_size": page_size}
-        if name_contains:
-            params["name"] = name_contains
+    async def _get_all(self, path: str, params: dict[str, Any]) -> list[dict[str, Any]]:
+        """GET a DRF list endpoint, following `next` links when paginated."""
+        base = f"{self.base_url}{path}"
         all_rows: list[dict[str, Any]] = []
         next_url: str | None = base
+        query: dict[str, Any] | None = params
         async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
             while next_url:
-                r = await client.get(
-                    next_url,
-                    headers=self._headers(),
-                    params=params if next_url == base else None,
-                )
+                r = await client.get(next_url, headers=self._headers(), params=query)
                 r.raise_for_status()
                 data = r.json()
                 if isinstance(data, list):
                     all_rows.extend(data)
                     break
-                chunk = data.get("results", data.get("data", []))
-                all_rows.extend(chunk)
+                all_rows.extend(data.get("results", data.get("data", [])))
                 nxt = data.get("next") or None
-                if nxt and nxt.startswith("/"):
-                    nxt = urljoin(self.base_url + "/", nxt.lstrip("/"))
-                elif nxt and not nxt.startswith("http"):
+                if nxt and not str(nxt).startswith("http"):
                     nxt = urljoin(self.base_url + "/", str(nxt).lstrip("/"))
                 next_url = nxt
-                params = None
+                query = None
         return all_rows
+
+    async def list_streams(
+        self,
+        name_contains: str = "",
+        page_size: int = 500,
+        *,
+        m3u_account_id: int | None = None,
+        channel_group_name: str = "",
+    ) -> list[dict[str, Any]]:
+        """List streams. Dispatcharr filters: name/channel_group_name are icontains,
+        m3u_account is an id. Results keep Dispatcharr's order (default `-name`)."""
+        params: dict[str, Any] = {"page_size": page_size}
+        if name_contains:
+            params["name"] = name_contains
+        if m3u_account_id is not None:
+            params["m3u_account"] = m3u_account_id
+        if channel_group_name:
+            params["channel_group_name"] = channel_group_name
+        return await self._get_all("/api/channels/streams/", params)
 
     async def list_channels(
         self, search: str = "", page_size: int = 500
     ) -> list[dict[str, Any]]:
-        url = f"{self.base_url}/api/channels/channels/"
         params: dict[str, Any] = {"page_size": page_size}
         if search:
             params["search"] = search
+        return await self._get_all("/api/channels/channels/", params)
+
+    async def list_m3u_accounts(self) -> list[dict[str, Any]]:
+        return await self._get_all("/api/m3u/accounts/", {})
+
+    async def list_stream_group_names(self) -> list[str]:
+        """Names of channel groups that have at least one stream."""
+        url = f"{self.base_url}/api/channels/streams/groups/"
         async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
-            r = await client.get(url, headers=self._headers(), params=params)
+            r = await client.get(url, headers=self._headers())
         r.raise_for_status()
         data = r.json()
-        if isinstance(data, list):
-            return data
-        return data.get("results", data.get("data", []))
+        return [str(x) for x in data] if isinstance(data, list) else []
+
+    async def list_channel_groups(self) -> list[dict[str, Any]]:
+        return await self._get_all("/api/channels/groups/", {})
 
     async def get_channel_streams(self, channel_id: int) -> list[dict[str, Any]]:
         url = f"{self.base_url}/api/channels/channels/{channel_id}/streams/"

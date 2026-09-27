@@ -25,6 +25,9 @@ class LeagueProfileCreate(BaseModel):
     espn_sport: str
     espn_league: str
     enabled: bool = True
+    exclude_terms: list[str] = Field(default_factory=list)
+    m3u_account_id: int | None = None
+    channel_group: str = ""
 
 
 class LeagueProfileUpdate(BaseModel):
@@ -34,6 +37,10 @@ class LeagueProfileUpdate(BaseModel):
     espn_sport: str | None = None
     espn_league: str | None = None
     enabled: bool | None = None
+    exclude_terms: list[str] | None = None
+    # An explicit null clears the account filter (checked via model_fields_set).
+    m3u_account_id: int | None = None
+    channel_group: str | None = None
 
 
 class LeagueProfileOut(BaseModel):
@@ -44,6 +51,9 @@ class LeagueProfileOut(BaseModel):
     espn_sport: str
     espn_league: str
     enabled: bool
+    exclude_terms: list[str] = Field(default_factory=list)
+    m3u_account_id: int | None = None
+    channel_group: str = ""
     created_at: str
     team_channel_count: int = 0
 
@@ -78,6 +88,11 @@ class TeamChannelOut(BaseModel):
     enabled: bool
     aliases: list[str]
     created_at: str
+
+
+class StreamOverrideIn(BaseModel):
+    stream_id: int
+    stream_name: str = ""
 
 
 class PatternTestRequest(BaseModel):
