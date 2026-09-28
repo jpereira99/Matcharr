@@ -1,4 +1,4 @@
-import { BigStat, StackedBar } from "@/components/StatSummary";
+import { BigStat, StackedBar, StatRow } from "@/components/StatSummary";
 import { AddTeamDialog } from "@/components/team/AddTeamDialog";
 import { TeamLogo } from "@/components/TeamLogo";
 import { Badge } from "@/components/ui/badge";
@@ -150,27 +150,29 @@ export function TeamChannelsPage() {
       ) : (
         <>
           <div className="flex flex-col gap-3 rounded-(--radius-lg) border border-(--color-border) px-5 py-4">
-            <div className="flex flex-wrap items-end gap-7">
-              <BigStat
-                value={stat(nReady)}
-                label="ready"
-                colorClass="text-(--color-success)"
-              />
-              <BigStat
-                value={stat(nLook)}
-                label="need a look"
-                colorClass="text-(--color-warning)"
-              />
-              <BigStat
-                value={stat(nOverride)}
-                label="overridden"
-                colorClass="text-(--color-override)"
-              />
-              <BigStat
-                value={stat(nWaiting)}
-                label="streams not listed yet"
-                colorClass="text-(--color-muted)"
-              />
+            <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
+              <StatRow>
+                <BigStat
+                  value={stat(nReady)}
+                  label="ready"
+                  colorClass="text-(--color-success)"
+                />
+                <BigStat
+                  value={stat(nLook)}
+                  label="need a look"
+                  colorClass="text-(--color-warning)"
+                />
+                <BigStat
+                  value={stat(nOverride)}
+                  label="overridden"
+                  colorClass="text-(--color-override)"
+                />
+                <BigStat
+                  value={stat(nWaiting)}
+                  label="streams not listed yet"
+                  colorClass="text-(--color-muted)"
+                />
+              </StatRow>
               <div className="ml-auto text-right text-xs text-(--color-muted)">
                 {teams.length} team{teams.length === 1 ? "" : "s"} · next game
                 for each

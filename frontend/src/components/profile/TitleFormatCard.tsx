@@ -1,6 +1,7 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { fmtDay, isToday } from "@/lib/date";
 import {
   aliasFromHow,
@@ -52,6 +53,11 @@ const styleFor = (map: Record<string, string>, type: TokenType) =>
 
 type Props = {
   titles: string[];
+  /** Whether the stream pool is still loading or failed to load. */
+  status: "loading" | "error" | "ready";
+  error?: string | null;
+  /** How many pool titles fit the pattern, shown while editing as text. */
+  poolFit?: { fits: number; total: number; skipped: number };
   pattern: string;
   compiled: Compiled;
   onPatternChange: (pattern: string) => void;
@@ -115,14 +121,17 @@ function pickDefaultExample(
 
 export function TitleFormatCard({
   titles,
+  status,
+  error,
+  poolFit,
   pattern,
   compiled,
   onPatternChange,
   evaluate,
 }: Props) {
   const [example, setExample] = useState<string | null>(null);
-  // Example used when the pool is empty. `auto` ones are stand-ins built from
-  // the pattern and pinned while tagging; null means follow the pattern.
+  // Title pasted when there are no pool streams to pick from. `auto` entries are
+  // stand-ins built from the pattern, pinned while tagging so chips don't jump.
   const [typedExample, setTypedExample] = useState<{
     text: string;
     auto: boolean;
@@ -142,20 +151,25 @@ export function TitleFormatCard({
     }
   }, [titles]);
 
-  const hasExamples = titles.length > 0;
-  const autoExample = !hasExamples && (typedExample?.auto ?? true);
-  const exampleTitle = hasExamples
+  const loading = status === "loading";
+  const hasExamples = status === "ready" && titles.length > 0;
+  const pasted = typedExample && !typedExample.auto ? typedExample.text : "";
+  // The title the pattern is checked against: a pool stream or a pasted title.
+  const realExample = hasExamples
     ? example !== null && titles.includes(example)
       ? example
       : titles[0]
-    : (typedExample?.text ?? exampleFromPattern(pattern));
-  const key = `${exampleTitle}\u0000${pattern}`;
+    : pasted;
+  // Chips can fall back to a stand-in built from the pattern, but it's never
+  // checked against ESPN or shown as the example.
+  const tokenSource =
+    realExample ||
+    (typedExample?.auto ? typedExample.text : exampleFromPattern(pattern));
+  const key = `${tokenSource}\u0000${pattern}`;
   const tokens = useMemo(
     () =>
-      edited?.key === key
-        ? edited.tokens
-        : deriveTokens(exampleTitle, compiled),
-    [edited, key, exampleTitle, compiled],
+      edited?.key === key ? edited.tokens : deriveTokens(tokenSource, compiled),
+    [edited, key, tokenSource, compiled],
   );
   const sel =
     selected !== null && selected < tokens.length
@@ -167,223 +181,256 @@ export function TitleFormatCard({
 
   const options = useMemo(() => {
     const list = titles.slice(0, MAX_EXAMPLES);
-    if (exampleTitle && !list.includes(exampleTitle))
-      list.unshift(exampleTitle);
+    if (realExample && hasExamples && !list.includes(realExample))
+      list.unshift(realExample);
     return list;
-  }, [titles, exampleTitle]);
+  }, [titles, realExample, hasExamples]);
 
   function retag(type: TokenType) {
     if (!tokens[sel] || tokens[sel].type === type) return;
     const next = setTokenType(tokens, sel, type);
     const p = patternFromTokens(next);
-    if (autoExample) setTypedExample({ text: exampleTitle, auto: true });
-    setEdited({ key: `${exampleTitle}\u0000${p}`, tokens: next });
+    if (!realExample) setTypedExample({ text: tokenSource, auto: true });
+    setEdited({ key: `${tokenSource}\u0000${p}`, tokens: next });
     onPatternChange(p);
   }
 
-  const check = !exampleTitle
-    ? null
-    : autoExample
-      ? {
-          ok: false,
-          text: "This example was built from the pattern. Paste a real title from your provider to check it against ESPN.",
-        }
-      : checkMessage(evaluate(exampleTitle), pattern);
+  let check: { ok: boolean; text: string } | null = null;
+  if (loading) check = null;
+  else if (realExample) check = checkMessage(evaluate(realExample), pattern);
+  else if (!compiled.ok) check = { ok: false, text: compiled.error };
+  else if (pattern.trim())
+    check = {
+      ok: false,
+      text: textMode
+        ? "Paste an example title above to check the pattern against it."
+        : "These parts come from the pattern itself. Paste a title from your provider to check it against ESPN.",
+    };
   const selToken = tokens[sel];
 
   return (
-    <SettingsCard
-      step={2}
-      title="Title format"
-      helper="Click a part of the title, then choose what it is."
-      footer={
-        <>
-          <span className="min-w-0 flex-1 font-mono text-xs break-words whitespace-pre-wrap text-(--color-text-secondary)">
-            {pattern || "No pattern yet"}
-          </span>
-          <button
-            type="button"
-            onClick={() => {
-              if (textMode && typedExample?.auto) setTypedExample(null);
-              setTextMode(!textMode);
-            }}
-            className="inline-flex flex-none cursor-pointer items-center gap-1.5 rounded-(--radius-sm) border border-(--color-border) bg-(--color-surface) px-2.5 py-1.5 text-xs font-medium text-(--color-foreground) transition-colors duration-150 hover:border-(--color-muted)"
-          >
-            {textMode ? (
-              <MousePointerClick className="h-3 w-3" />
-            ) : (
-              <Pencil className="h-3 w-3" />
-            )}
-            {textMode ? "Back to visual" : "Edit as text"}
-          </button>
-        </>
-      }
-    >
-      <div>
-        <Label htmlFor="example-stream">Example stream</Label>
-        {hasExamples ? (
-          <Select
-            id="example-stream"
-            mono
-            value={exampleTitle}
-            onChange={(e) => {
-              setExample(e.target.value);
-              setSelected(null);
-              setTextMode(false);
-            }}
-          >
-            {options.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </Select>
-        ) : (
+    <div id="title-format" className="scroll-mt-6">
+      <SettingsCard
+        step={2}
+        title="Title format"
+        helper="Click a part of the title, then choose what it is."
+        footer={
           <>
-            <Input
-              id="example-stream"
-              value={
-                typedExample && !typedExample.auto ? typedExample.text : ""
-              }
-              onChange={(e) => {
-                setTypedExample(
-                  e.target.value ? { text: e.target.value, auto: false } : null,
-                );
-                setSelected(null);
+            <span className="min-w-0 flex-1 font-mono text-xs break-words whitespace-pre-wrap text-(--color-text-secondary)">
+              {pattern || "No pattern yet"}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                if (textMode && typedExample?.auto) setTypedExample(null);
+                setTextMode(!textMode);
               }}
+              className="inline-flex flex-none cursor-pointer items-center gap-1.5 rounded-(--radius-sm) border border-(--color-border) bg-(--color-surface) px-2.5 py-1.5 text-xs font-medium text-(--color-foreground) transition-colors duration-150 hover:border-(--color-muted)"
+            >
+              {textMode ? (
+                <MousePointerClick className="h-3 w-3" />
+              ) : (
+                <Pencil className="h-3 w-3" />
+              )}
+              {textMode ? "Back to visual" : "Edit as text"}
+            </button>
+          </>
+        }
+      >
+        <div>
+          <Label htmlFor="example-stream">Example stream</Label>
+          {loading ? (
+            <Skeleton className="h-9 w-full rounded-(--radius-md)" />
+          ) : hasExamples ? (
+            <Select
+              id="example-stream"
+              mono
+              value={realExample}
+              onChange={(e) => {
+                setExample(e.target.value);
+                setSelected(null);
+                setTextMode(false);
+              }}
+            >
+              {options.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </Select>
+          ) : (
+            <>
+              <Input
+                id="example-stream"
+                value={pasted}
+                onChange={(e) => {
+                  setTypedExample(
+                    e.target.value
+                      ? { text: e.target.value, auto: false }
+                      : null,
+                  );
+                  setSelected(null);
+                }}
+                spellCheck={false}
+                placeholder="Paste a stream title, e.g. (Apple) (MLS) 009 |  New_York vs. St. Louis (2026-09-26 19:25:25)"
+                className="font-mono text-xs"
+              />
+              <p
+                className={cn(
+                  "mt-1.5 text-xs",
+                  status === "error"
+                    ? "text-(--color-warning)"
+                    : "text-(--color-muted)",
+                )}
+              >
+                {status === "error"
+                  ? `Couldn't load streams from Dispatcharr${error ? ` (${error})` : ""}. Paste a title from your provider to tag its parts.`
+                  : "No streams in this pool yet. Paste a title from your provider to tag its parts."}
+              </p>
+            </>
+          )}
+        </div>
+
+        {textMode ? (
+          <div>
+            <Label htmlFor="pattern-text">Pattern text</Label>
+            <Input
+              id="pattern-text"
+              value={pattern}
+              onChange={(e) => onPatternChange(e.target.value)}
               spellCheck={false}
-              placeholder={
-                exampleTitle ||
-                "e.g. (Apple) (MLS) 009 |  New_York vs. St. Louis (2026-09-26 19:25:25)"
-              }
+              aria-invalid={!compiled.ok}
+              placeholder="e.g. MLB {n} | {away} x {home} start:{time}"
               className="font-mono text-xs"
             />
             <p className="mt-1.5 text-xs text-(--color-muted)">
-              No streams in this pool yet. Paste a title from your provider to
-              tag its parts.
+              Placeholders:{" "}
+              <span className="font-mono text-(--color-foreground)">
+                {"{home} {away} {time} {n}"}
+              </span>
+              {hasExamples && poolFit && compiled.ok && pattern.trim() && (
+                <>
+                  {" · "}
+                  Fits{" "}
+                  <span className="text-(--color-foreground)">
+                    {poolFit.fits} of {poolFit.total - poolFit.skipped}
+                  </span>{" "}
+                  streams in this pool
+                  {poolFit.skipped > 0 && ` (${poolFit.skipped} skipped)`}
+                </>
+              )}
             </p>
-          </>
-        )}
-      </div>
-
-      {textMode ? (
-        <div>
-          <Label htmlFor="pattern-text">Pattern text</Label>
-          <Input
-            id="pattern-text"
-            value={pattern}
-            onChange={(e) => onPatternChange(e.target.value)}
-            spellCheck={false}
-            aria-invalid={!compiled.ok}
-            placeholder="e.g. MLB {n} | {away} x {home} start:{time}"
-            className="font-mono text-xs"
-          />
-          <p className="mt-1.5 text-xs text-(--color-muted)">
-            Placeholders:{" "}
-            <span className="font-mono text-(--color-foreground)">
-              {"{home} {away} {time} {n}"}
-            </span>
-          </p>
-        </div>
-      ) : tokens.length === 0 ? (
-        <p className="rounded-(--radius-md) bg-(--color-surface-raised) px-3 py-2.5 text-xs text-(--color-muted)">
-          Paste an example title above, then click its parts to tag them.
-        </p>
-      ) : (
-        <>
-          <div
-            className="flex flex-wrap items-end gap-x-1 gap-y-1.5"
-            role="listbox"
-            aria-label="Title parts"
-          >
-            {tokens.map((t, i) => (
-              <button
-                key={`${i}-${t.text}`}
-                type="button"
-                role="option"
-                aria-selected={i === sel}
-                onClick={() => setSelected(i)}
-                className="flex cursor-pointer flex-col items-start gap-[3px]"
-                style={{ marginRight: t.gap.length > 1 ? 8 : 0 }}
-              >
-                <span
-                  className={cn(
-                    "h-[11px] pl-0.5 text-[9px] leading-[11px] font-semibold tracking-[.08em] uppercase",
-                    styleFor(CAPTION_STYLES, t.type),
-                  )}
-                >
-                  {TYPE_LABELS[t.type]}
-                </span>
-                <span
-                  className={cn(
-                    "rounded-(--radius-sm) border px-2 py-[5px] font-mono text-[13px] whitespace-pre transition-colors duration-150",
-                    styleFor(CHIP_STYLES, t.type),
-                    i === sel &&
-                      "border-(--color-accent) ring-2 ring-(--color-accent)/30",
-                  )}
-                >
-                  {t.text}
-                </span>
-              </button>
+          </div>
+        ) : loading ? (
+          <div className="flex flex-wrap gap-1.5">
+            {[64, 52, 40, 20, 88, 36, 72, 140].map((w, i) => (
+              <Skeleton
+                key={i}
+                className="h-[42px] rounded-(--radius-sm)"
+                style={{ width: w }}
+              />
             ))}
           </div>
-          {selToken && (
-            <div className="flex flex-wrap items-center gap-2.5 rounded-(--radius-md) bg-(--color-surface-raised) px-3 py-2.5">
-              <span className="text-xs text-(--color-muted)">
-                Selected{" "}
-                <span className="font-mono whitespace-pre text-(--color-foreground)">
-                  “{selToken.text}”
-                </span>{" "}
-                is
-              </span>
-              <div
-                role="radiogroup"
-                aria-label="Part type"
-                className="flex flex-wrap gap-1 rounded-(--radius-md) bg-(--color-background) p-[3px]"
-              >
-                {PICKER.map((ty) => {
-                  const active = selToken.type === ty;
-                  return (
-                    <button
-                      key={ty}
-                      type="button"
-                      role="radio"
-                      aria-checked={active}
-                      onClick={() => retag(ty)}
-                      className={cn(
-                        "cursor-pointer rounded-(--radius-sm) px-2.5 py-[5px] text-xs font-medium transition-colors duration-150",
-                        active
-                          ? cn(
-                              "bg-(--color-surface-raised)",
-                              ty === "home"
-                                ? "text-(--color-capture-home-text)"
-                                : ty === "away"
-                                  ? "text-(--color-capture-away-text)"
-                                  : "text-(--color-foreground)",
-                            )
-                          : "text-(--color-muted) hover:text-(--color-foreground)",
-                      )}
-                    >
-                      {ty === "text" ? "Exact text" : TYPE_LABELS[ty]}
-                    </button>
-                  );
-                })}
-              </div>
+        ) : tokens.length === 0 ? (
+          <p className="rounded-(--radius-md) bg-(--color-surface-raised) px-3 py-2.5 text-xs text-(--color-muted)">
+            Paste an example title above, then click its parts to tag them.
+          </p>
+        ) : (
+          <>
+            <div
+              className="flex flex-wrap items-end gap-x-1 gap-y-1.5"
+              role="listbox"
+              aria-label="Title parts"
+            >
+              {tokens.map((t, i) => (
+                <button
+                  key={`${i}-${t.text}`}
+                  type="button"
+                  role="option"
+                  aria-selected={i === sel}
+                  onClick={() => setSelected(i)}
+                  className="flex cursor-pointer flex-col items-start gap-[3px]"
+                  style={{ marginRight: t.gap.length > 1 ? 8 : 0 }}
+                >
+                  <span
+                    className={cn(
+                      "h-[11px] pl-0.5 text-[9px] leading-[11px] font-semibold tracking-[.08em] uppercase",
+                      styleFor(CAPTION_STYLES, t.type),
+                    )}
+                  >
+                    {TYPE_LABELS[t.type]}
+                  </span>
+                  <span
+                    className={cn(
+                      "rounded-(--radius-sm) border px-2 py-[5px] font-mono text-[13px] whitespace-pre transition-colors duration-150",
+                      styleFor(CHIP_STYLES, t.type),
+                      i === sel &&
+                        "border-(--color-accent) ring-2 ring-(--color-accent)/30",
+                    )}
+                  >
+                    {t.text}
+                  </span>
+                </button>
+              ))}
             </div>
-          )}
-        </>
-      )}
+            {selToken && (
+              <div className="flex flex-wrap items-center gap-2.5 rounded-(--radius-md) bg-(--color-surface-raised) px-3 py-2.5">
+                <span className="text-xs text-(--color-muted)">
+                  Selected{" "}
+                  <span className="font-mono whitespace-pre text-(--color-foreground)">
+                    “{selToken.text}”
+                  </span>{" "}
+                  is
+                </span>
+                <div
+                  role="radiogroup"
+                  aria-label="Part type"
+                  className="flex flex-wrap gap-1 rounded-(--radius-md) bg-(--color-background) p-[3px]"
+                >
+                  {PICKER.map((ty) => {
+                    const active = selToken.type === ty;
+                    return (
+                      <button
+                        key={ty}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        onClick={() => retag(ty)}
+                        className={cn(
+                          "cursor-pointer rounded-(--radius-sm) px-2.5 py-[5px] text-xs font-medium transition-colors duration-150",
+                          active
+                            ? cn(
+                                "bg-(--color-surface-raised)",
+                                ty === "home"
+                                  ? "text-(--color-capture-home-text)"
+                                  : ty === "away"
+                                    ? "text-(--color-capture-away-text)"
+                                    : "text-(--color-foreground)",
+                              )
+                            : "text-(--color-muted) hover:text-(--color-foreground)",
+                        )}
+                      >
+                        {ty === "text" ? "Exact text" : TYPE_LABELS[ty]}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </>
+        )}
 
-      {check && (
-        <div className="flex items-start gap-2 text-xs leading-normal text-(--color-foreground)">
-          {check.ok ? (
-            <CircleCheck className="mt-0.5 h-3.5 w-3.5 flex-none text-(--color-success)" />
-          ) : (
-            <CircleAlert className="mt-0.5 h-3.5 w-3.5 flex-none text-(--color-warning)" />
-          )}
-          <span>{check.text}</span>
-        </div>
-      )}
-    </SettingsCard>
+        {check && (
+          <div className="flex items-start gap-2 text-xs leading-normal text-(--color-foreground)">
+            {check.ok ? (
+              <CircleCheck className="mt-0.5 h-3.5 w-3.5 flex-none text-(--color-success)" />
+            ) : (
+              <CircleAlert className="mt-0.5 h-3.5 w-3.5 flex-none text-(--color-warning)" />
+            )}
+            <span>{check.text}</span>
+          </div>
+        )}
+      </SettingsCard>
+    </div>
   );
 }

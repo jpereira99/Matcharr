@@ -27,6 +27,7 @@ const RANK_NOTES = {
   only_fit: "Only stream that fits",
   closest_time: "Closest start time to kickoff",
   listed_first: "Listed first in Dispatcharr",
+  preferred_account: "From your preferred M3U account",
 };
 
 const ROLE_STYLE: Record<

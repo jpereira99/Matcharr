@@ -62,10 +62,26 @@ async def da_stream_groups() -> list[str]:
 
 @router.get("/streams")
 async def da_streams(
-    name: str = Query("", description="Name contains filter")
+    name: str = Query("", description="Name contains filter"),
+    m3u_account_id: int | None = Query(None),
+    channel_group: str = Query(""),
+    limit: int | None = Query(
+        None, ge=1, le=50, description="Return only the first N (one request)"
+    ),
 ) -> list[dict[str, Any]]:
     client = await _client()
     try:
-        return await client.list_streams(name_contains=name)
+        if limit is not None:
+            return await client.sample_streams(
+                m3u_account_id=m3u_account_id,
+                channel_group_name=channel_group,
+                name_contains=name,
+                limit=limit,
+            )
+        return await client.list_streams(
+            name_contains=name,
+            m3u_account_id=m3u_account_id,
+            channel_group_name=channel_group,
+        )
     except Exception as e:
         raise HTTPException(502, str(e)) from e

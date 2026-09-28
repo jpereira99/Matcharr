@@ -67,10 +67,19 @@ CREATE TABLE IF NOT EXISTS switch_log (
     to_stream_name TEXT,
     to_stream_id INTEGER,
     reason TEXT NOT NULL,
+    outcome TEXT NOT NULL DEFAULT 'switched',
     switched_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_switch_log_time ON switch_log(switched_at DESC);
+
+-- A routed game whose channel needs its after-game action (restore/clear).
+CREATE TABLE IF NOT EXISTS channel_restore (
+    team_channel_id INTEGER PRIMARY KEY REFERENCES team_channels(id) ON DELETE CASCADE,
+    espn_event_id TEXT NOT NULL,
+    stream_ids_json TEXT NOT NULL DEFAULT '[]',
+    saved_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 
 -- One-game manual stream choice; removed once the game is over.
 CREATE TABLE IF NOT EXISTS stream_overrides (
@@ -90,7 +99,20 @@ _COLUMN_MIGRATIONS: list[tuple[str, str, str]] = [
     ("league_profiles", "exclude_terms_json", "TEXT NOT NULL DEFAULT '[]'"),
     ("league_profiles", "m3u_account_id", "INTEGER"),
     ("league_profiles", "channel_group", "TEXT NOT NULL DEFAULT ''"),
+    ("switch_log", "outcome", "TEXT NOT NULL DEFAULT 'switched'"),
 ]
+
+# Classify rows logged before switch_log.outcome existed, from their free-text reason.
+_OUTCOME_BACKFILL = """
+    UPDATE switch_log SET outcome = CASE
+        WHEN lower(reason) LIKE '%error%' OR lower(reason) LIKE '%fail%' THEN 'failed'
+        WHEN lower(reason) LIKE '%override%' THEN 'override'
+        WHEN lower(reason) LIKE '%no match%' OR lower(reason) LIKE '%outside%'
+             OR to_stream_id IS NULL THEN 'no_match'
+        ELSE 'switched'
+    END
+    WHERE outcome IS NULL OR outcome NOT IN ('switched', 'no_match', 'failed', 'override')
+"""
 
 
 async def init_db() -> None:
@@ -103,6 +125,7 @@ async def init_db() -> None:
             cols = {row[1] for row in await cur.fetchall()}
             if column not in cols:
                 await db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}")
+        await db.execute(_OUTCOME_BACKFILL)
         await db.commit()
 
 

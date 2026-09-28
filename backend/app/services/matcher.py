@@ -95,17 +95,29 @@ async def get_team_channel_row(
     return dict(row) if row else None
 
 
+def _aware(now: datetime) -> datetime:
+    return (
+        now.astimezone(timezone.utc) if now.tzinfo else now.replace(tzinfo=timezone.utc)
+    )
+
+
 def _game_active_for_team(
     game: dict[str, Any],
     now: datetime,
-    pre_game_minutes: int,
+    settings: AppSettings,
 ) -> bool:
+    """Whether a game is inside its routing window (pre-game start → stop condition)."""
     gt = parse_game_time(game)
     if gt is None:
         return False
-    now_aware = (
-        now.astimezone(timezone.utc) if now.tzinfo else now.replace(tzinfo=timezone.utc)
-    )
+    now_aware = _aware(now)
+    window_start = gt - timedelta(minutes=settings.pre_game_minutes)
+    if settings.routing_stop_mode == "fixed":
+        return (
+            window_start
+            <= now_aware
+            <= gt + timedelta(hours=settings.routing_stop_hours)
+        )
     status = str(game.get("status", "")).lower()
     if status == "post":
         return False
@@ -113,9 +125,22 @@ def _game_active_for_team(
         # Trust live status, but cap at 8 h from game_time to guard against stale cache
         return now_aware <= gt + timedelta(hours=8)
     # pre / scheduled — route within pre-game window through end of typical broadcast
-    window_start = gt - timedelta(minutes=pre_game_minutes)
-    window_end = gt + timedelta(hours=12)
-    return window_start <= now_aware <= window_end
+    return window_start <= now_aware <= gt + timedelta(hours=12)
+
+
+def game_routing_stopped(
+    game: dict[str, Any], now: datetime, settings: AppSettings
+) -> bool:
+    """The game's stop condition has been met, so its after-game action is due."""
+    gt = parse_game_time(game)
+    if gt is None:
+        return True
+    now_aware = _aware(now)
+    if settings.routing_stop_mode == "fixed":
+        return now_aware > gt + timedelta(hours=settings.routing_stop_hours)
+    if str(game.get("status", "")).lower() == "post":
+        return True
+    return now_aware > gt + timedelta(hours=12)
 
 
 def _upcoming_games_for_team(
@@ -157,12 +182,15 @@ def _pick_game_for_team(
     games: list[dict[str, Any]],
     team_id: str,
     now: datetime,
-    pre_game_minutes: int,
+    settings: AppSettings,
 ) -> tuple[dict[str, Any] | None, bool]:
     """Returns (game, my_team_is_home)."""
     mine: list[tuple[dict[str, Any], bool]] = []
     for g in games:
-        if str(g.get("status", "")).lower() == "post":
+        if (
+            settings.routing_stop_mode == "final"
+            and str(g.get("status", "")).lower() == "post"
+        ):
             continue
         hid, aid = str(g["home_team_id"]), str(g["away_team_id"])
         if hid == team_id:
@@ -171,9 +199,7 @@ def _pick_game_for_team(
             mine.append((g, False))
     if not mine:
         return None, False
-    active = [
-        (g, h) for g, h in mine if _game_active_for_team(g, now, pre_game_minutes)
-    ]
+    active = [(g, h) for g, h in mine if _game_active_for_team(g, now, settings)]
     if not active:
         return None, False
     active.sort(key=lambda gh: str(gh[0].get("game_time", "")))
@@ -412,13 +438,28 @@ class ProfileStreams:
     error: str | None = None
 
 
+# Stream pools shared across requests: (url, name, account, group) -> (fetched_at, streams).
+# Every fetch refreshes it; read-only views may reuse entries younger than a scan interval.
+_POOL_CACHE: dict[
+    tuple[str, str, int | None, str], tuple[float, list[dict[str, Any]]]
+] = {}
+
+
 class StreamSource:
     """Fetches (and caches for one request/cycle) each profile's stream pool."""
 
-    def __init__(self, client: DispatcharrClient | None) -> None:
+    def __init__(
+        self, client: DispatcharrClient | None, *, max_age_seconds: float | None = None
+    ) -> None:
         self.client = client
+        self.max_age_seconds = max_age_seconds
         self._profiles: dict[int, ProfileStreams] = {}
         self._groups: list[dict[str, Any]] | None = None
+        # Oldest pool timestamp served, for "checked N min ago" copy.
+        self.checked_at: float | None = None
+
+    def _note_checked(self, ts: float) -> None:
+        self.checked_at = ts if self.checked_at is None else min(self.checked_at, ts)
 
     async def _group_ids(self, name: str) -> set[int] | None:
         if self._groups is None:
@@ -445,6 +486,27 @@ class StreamSource:
         if self.client is None:
             raise DispatcharrError("Dispatcharr not configured")
         group = channel_group.strip()
+        key = (self.client.base_url, name_filter.strip(), m3u_account_id, group)
+        hit = _POOL_CACHE.get(key)
+        if (
+            hit
+            and self.max_age_seconds is not None
+            and time.time() - hit[0] < self.max_age_seconds
+        ):
+            self._note_checked(hit[0])
+            return hit[1]
+        streams = await self._fetch_fresh(
+            name_filter=name_filter, m3u_account_id=m3u_account_id, group=group
+        )
+        now = time.time()
+        _POOL_CACHE[key] = (now, streams)
+        self._note_checked(now)
+        return streams
+
+    async def _fetch_fresh(
+        self, *, name_filter: str, m3u_account_id: int | None, group: str
+    ) -> list[dict[str, Any]]:
+        assert self.client is not None
         streams = await self.client.list_streams(
             name_contains=name_filter.strip(),
             m3u_account_id=m3u_account_id,
@@ -493,12 +555,23 @@ class StreamSource:
 class RoutingContext:
     """Per-request caches shared by the match cycle and the read-only views."""
 
-    def __init__(self, db: aiosqlite.Connection, settings: AppSettings) -> None:
+    def __init__(
+        self,
+        db: aiosqlite.Connection,
+        settings: AppSettings,
+        *,
+        cached_streams: bool = False,
+    ) -> None:
         self.db = db
         self.settings = settings
         self.tz = local_tz(settings)
         self.client = _client_for(settings)
-        self.source = StreamSource(self.client)
+        self.source = StreamSource(
+            self.client,
+            max_age_seconds=(
+                settings.scan_interval_minutes * 60 if cached_streams else None
+            ),
+        )
         self._games: dict[int, list[dict[str, Any]]] = {}
         self._aliases: dict[tuple[str, str], dict[str, list[str]]] = {}
 
@@ -536,8 +609,16 @@ class RoutingContext:
             skip_terms=ps.skip_terms,
             game_time=parse_game_time(game),
             local_tz=self.tz,
+            tie_break=self.settings.tie_break,
+            preferred_account_id=self.settings.preferred_m3u_account_id,
         )
-        return summarize(cands, ps.streams, override_row)
+        return summarize(
+            cands,
+            ps.streams,
+            override_row,
+            tie_break=self.settings.tie_break,
+            preferred_account_id=self.settings.preferred_m3u_account_id,
+        )
 
 
 def _matchup(game: dict[str, Any]) -> str:
@@ -554,15 +635,104 @@ async def _log_switch(
     to_name: str | None,
     to_id: int | None,
     reason: str,
+    outcome: str,
 ) -> None:
     await db.execute(
         """
-        INSERT INTO switch_log(team_channel_id, from_stream_name, to_stream_name, to_stream_id, reason)
-        VALUES(?,?,?,?,?)
+        INSERT INTO switch_log(team_channel_id, from_stream_name, to_stream_name, to_stream_id, reason, outcome)
+        VALUES(?,?,?,?,?,?)
         """,
-        (tc_id, from_name, to_name, to_id, reason),
+        (tc_id, from_name, to_name, to_id, reason, outcome),
     )
     await db.commit()
+
+
+async def _remember_channel(
+    ctx: RoutingContext,
+    tc_id: int,
+    event_id: str,
+    current_ids: list[int],
+) -> None:
+    """Record a routed game so its after-game action runs once it's over.
+
+    The first game keeps the pre-routing streams; back-to-back games only move
+    the record to the newer event.
+    """
+    if ctx.settings.after_game_action == "leave":
+        return
+    await ctx.db.execute(
+        """
+        INSERT INTO channel_restore(team_channel_id, espn_event_id, stream_ids_json)
+        VALUES(?,?,?)
+        ON CONFLICT(team_channel_id) DO UPDATE SET espn_event_id = excluded.espn_event_id
+        """,
+        (tc_id, event_id, json.dumps(current_ids)),
+    )
+    await ctx.db.commit()
+
+
+async def _run_after_game_actions(
+    ctx: RoutingContext, now: datetime, errors: list[str]
+) -> int:
+    """Restore or clear channels whose routed game has hit its stop condition."""
+    db, client = ctx.db, ctx.client
+    assert client is not None
+    cur = await db.execute("""
+        SELECT cr.*, tc.dispatcharr_channel_id, tc.league_profile_id, tc.espn_team_id
+        FROM channel_restore cr JOIN team_channels tc ON tc.id = cr.team_channel_id
+        """)
+    rows = [dict(r) for r in await cur.fetchall()]
+    done = 0
+    for r in rows:
+        tc_id = int(r["team_channel_id"])
+        games = await ctx.games(int(r["league_profile_id"]))
+        game = next((g for g in games if str(g["id"]) == str(r["espn_event_id"])), None)
+        if game is not None and not game_routing_stopped(game, now, ctx.settings):
+            continue
+        active, _ = _pick_game_for_team(
+            games, str(r["espn_team_id"]), now, ctx.settings
+        )
+        if active is not None:
+            continue
+        action = ctx.settings.after_game_action
+        if action != "leave":
+            target = _json_list(r["stream_ids_json"]) if action == "restore" else []
+            ch_id = int(r["dispatcharr_channel_id"])
+            label = (
+                "Restored the streams from before routing"
+                if action == "restore"
+                else "Cleared the channel"
+            )
+            try:
+                current = await client.get_channel_streams(ch_id)
+                await client.patch_channel_streams(ch_id, [int(x) for x in target])
+            except Exception as e:
+                errors.append(f"After-game action for channel {ch_id}: {e}")
+                await _log_switch(
+                    db,
+                    tc_id,
+                    None,
+                    None,
+                    None,
+                    f"Switch failed: {label.lower()} after game {r['espn_event_id']}: {e}",
+                    "failed",
+                )
+            else:
+                done += 1
+                await _log_switch(
+                    db,
+                    tc_id,
+                    str(current[0]["name"]) if current else None,
+                    None,
+                    int(target[0]) if target else None,
+                    f"{label} after game {r['espn_event_id']}",
+                    "switched",
+                )
+        await db.execute(
+            "DELETE FROM channel_restore WHERE team_channel_id = ?", (tc_id,)
+        )
+        await db.commit()
+    return done
 
 
 async def _route_team(
@@ -590,7 +760,7 @@ async def _route_team(
 
     games = await ctx.games(lp_id)
     game, is_home = _pick_game_for_team(
-        games, str(row["espn_team_id"]), now, ctx.settings.pre_game_minutes
+        games, str(row["espn_team_id"]), now, ctx.settings
     )
     if not game:
         return False
@@ -608,6 +778,7 @@ async def _route_team(
             None,
             None,
             f"No matching stream for game {game.get('id')} ({team_name} vs {opp})",
+            "no_match",
         )
         return False
 
@@ -624,15 +795,19 @@ async def _route_team(
     if cur_ids and cur_ids[0] == new_id:
         return False
     from_name = str(current[0]["name"]) if current else None
+    await _remember_channel(ctx, tc_id, str(game["id"]), cur_ids)
 
     try:
         await client.patch_channel_streams(ch_id, [new_id])
     except DispatcharrError as e:
         errors.append(str(e))
-        await _log_switch(db, tc_id, from_name, to_name, new_id, f"Switch failed: {e}")
+        await _log_switch(
+            db, tc_id, from_name, to_name, new_id, f"Switch failed: {e}", "failed"
+        )
         return False
 
-    how = " · manual override" if ev.status == "override" else ""
+    overridden = ev.status == "override"
+    how = " · manual override" if overridden else ""
     await _log_switch(
         db,
         tc_id,
@@ -640,6 +815,7 @@ async def _route_team(
         to_name,
         new_id,
         f"Routed to game {game.get('id')} ({to_name}){how}",
+        "override" if overridden else "switched",
     )
     return True
 
@@ -672,6 +848,7 @@ async def run_match_cycle(
     for row in await _get_team_channels(db):
         if await _route_team(ctx, row, now, errors, reported):
             switches += 1
+    switches += await _run_after_game_actions(ctx, now, errors)
 
     msg = f"Completed: {switches} switch(es)"
     if errors:
@@ -729,7 +906,7 @@ async def preview_routing(db: aiosqlite.Connection) -> dict[str, Any]:
             continue
 
         games = await ctx.games(int(row["league_profile_id"]))
-        game, is_home = _pick_game_for_team(games, tid, now, settings.pre_game_minutes)
+        game, is_home = _pick_game_for_team(games, tid, now, settings)
         if not game:
             mine = [
                 g
@@ -830,9 +1007,7 @@ async def upcoming_stream_matches(db: aiosqlite.Connection) -> dict[str, Any]:
 
         base["next_game"] = _matchup(game)
         base["game_time"] = str(game.get("game_time", "") or "")
-        base["in_routing_window"] = _game_active_for_team(
-            game, now, settings.pre_game_minutes
-        )
+        base["in_routing_window"] = _game_active_for_team(game, now, settings)
         override_row = (await overrides_for_team(db, int(row["id"]))).get(
             str(game["id"])
         )
@@ -897,7 +1072,7 @@ def _game_out(
             else None
         ),
         "state": str(game.get("status", "")),
-        "in_window": _game_active_for_team(game, now, settings.pre_game_minutes),
+        "in_window": _game_active_for_team(game, now, settings),
     }
 
 

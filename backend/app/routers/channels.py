@@ -202,9 +202,8 @@ async def update_team_channel(tc_id: int, body: TeamChannelUpdate) -> TeamChanne
 @router.delete("/{tc_id}")
 async def delete_team_channel(tc_id: int) -> dict[str, str]:
     async with get_db() as db:
-        await db.execute(
-            "DELETE FROM stream_overrides WHERE team_channel_id = ?", (tc_id,)
-        )
+        for table in ("stream_overrides", "channel_restore"):
+            await db.execute(f"DELETE FROM {table} WHERE team_channel_id = ?", (tc_id,))
         await db.execute("DELETE FROM team_channels WHERE id = ?", (tc_id,))
         await db.commit()
     return {"status": "ok"}

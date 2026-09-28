@@ -80,8 +80,18 @@ const LEAGUE_LOGO_FILE: Record<string, string> = {
   "usa.nwsl": "nwsl",
 };
 
+/** Soccer competitions ESPN files under /i/leaguelogos/soccer/500/{id}.png. */
+const SOCCER_LEAGUE_LOGO_ID: Record<string, number> = {
+  "eng.1": 23,
+  "uefa.champions": 2,
+};
+
 export function leagueLogoUrl(league: string): string {
-  const file = LEAGUE_LOGO_FILE[normalizeLeagueSlug(league)];
+  const slug = normalizeLeagueSlug(league);
+  const soccerId = SOCCER_LEAGUE_LOGO_ID[slug];
+  if (soccerId)
+    return `https://a.espncdn.com/i/leaguelogos/soccer/500/${soccerId}.png`;
+  const file = LEAGUE_LOGO_FILE[slug];
   if (!file) return "";
   return `https://a.espncdn.com/i/teamlogos/leagues/500/${file}.png`;
 }

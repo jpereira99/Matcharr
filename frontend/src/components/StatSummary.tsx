@@ -25,6 +25,15 @@ export function BigStat({
   );
 }
 
+/** Equal-width columns (as wide as the widest stat) so numbers sit evenly. */
+export function StatRow({ children }: { children: ReactNode }) {
+  return (
+    <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:auto-cols-fr sm:grid-flow-col sm:grid-cols-none">
+      {children}
+    </div>
+  );
+}
+
 /** 6px segmented bar; segments with a zero count are omitted. */
 export function StackedBar({
   segments,

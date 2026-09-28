@@ -29,6 +29,7 @@
   --color-capture-home-text: #fbbf24;
   --color-capture-away: #3b82f6;
   --color-capture-away-text: #93c5fd;
+  --color-capture-failed-text: #fca5a5;
   --color-text-secondary: #94a3b8;
   --color-border-strong: #334155;
 
@@ -67,6 +68,7 @@
   --color-capture-home-text: #92400e;
   --color-capture-away: #2563eb;
   --color-capture-away-text: #1e40af;
+  --color-capture-failed-text: #b91c1c;
   --color-text-secondary: #475569;
   --color-border-strong: #cbd5e1;
 

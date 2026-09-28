@@ -1,5 +1,6 @@
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { AddChip, Chip, SuggestionChip } from "@/components/ChipEditor";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { LeagueBadge } from "@/components/LeagueBadge";
 import { CandidateCard } from "@/components/team/CandidateCard";
 import { TeamLogo } from "@/components/TeamLogo";
@@ -139,6 +140,7 @@ export function TeamChannelDetailPage() {
   });
   const channelsQ = useDispatcharrChannels();
   const [selectedGameId, setSelectedGameId] = useState<string | null>(null);
+  const [removeOpen, setRemoveOpen] = useState(false);
 
   useEffect(() => window.scrollTo(0, 0), [tcId]);
 
@@ -265,6 +267,10 @@ export function TeamChannelDetailPage() {
 
   const channels = channelsQ.data ?? [];
   const hasChannel = channels.some((c) => c.id === team.dispatcharr_channel_id);
+  const channelLabelFor = (id: number) => {
+    const ch = channels.find((c) => c.id === id);
+    return ch ? channelLabel(ch) : `#${id}`;
+  };
 
   // Candidates: the active override first, then the server's ranking.
   const candidates = game
@@ -338,14 +344,7 @@ export function TeamChannelDetailPage() {
           />
           <button
             type="button"
-            onClick={() => {
-              if (
-                confirm(
-                  `Remove ${team.team_name}? Its channel is left as it is.`,
-                )
-              )
-                remove.mutate();
-            }}
+            onClick={() => setRemoveOpen(true)}
             className="ml-1 cursor-pointer rounded-(--radius-sm) p-1.5 text-(--color-muted) transition-colors duration-150 hover:bg-(--color-danger)/10 hover:text-(--color-danger)"
             aria-label="Remove team"
             title="Remove team"
@@ -354,6 +353,20 @@ export function TeamChannelDetailPage() {
           </button>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={removeOpen}
+        title={`Remove ${team.team_name}?`}
+        confirmLabel="Remove team"
+        pending={remove.isPending}
+        onCancel={() => setRemoveOpen(false)}
+        onConfirm={() => remove.mutate()}
+      >
+        Matcharr stops switching channel{" "}
+        {channelLabelFor(team.dispatcharr_channel_id)} for this team. The
+        channel in Dispatcharr stays as it is, and any overrides for its games
+        are removed.
+      </ConfirmDialog>
 
       <div
         className="grid gap-4"

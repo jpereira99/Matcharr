@@ -18,7 +18,8 @@ from app.services.patterns import (
 
 CandidateKind = Literal["fit", "skipped", "rejected"]
 GameStatus = Literal["override", "ready", "conflict", "near_miss", "not_listed"]
-RankReason = Literal["only_fit", "closest_time", "listed_first"]
+RankReason = Literal["only_fit", "closest_time", "listed_first", "preferred_account"]
+TieBreak = Literal["closest_time", "first_listed", "prefer_account"]
 
 
 @dataclass
@@ -34,6 +35,7 @@ class Candidate:
     skip_term: str | None
     time_delta_minutes: int | None
     order: int
+    m3u_account: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -75,6 +77,15 @@ def _stream_id(stream: dict[str, Any]) -> int | None:
         return None
 
 
+def _account_id(value: Any) -> int | None:
+    if isinstance(value, dict):
+        value = value.get("id")
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def rank_candidates(
     compiled: CompiledPattern,
     streams: list[dict[str, Any]],
@@ -87,13 +98,15 @@ def rank_candidates(
     skip_terms: list[str],
     game_time: datetime | None,
     local_tz: tzinfo,
+    tie_break: TieBreak = "closest_time",
+    preferred_account_id: int | None = None,
 ) -> list[Candidate]:
     """Every stream relevant to the game, ordered fits → rejected → skipped.
 
     A stream is relevant when it fits the pattern and at least one side names a
     team in this game. Streams stamped with a date/time for a different game are
-    dropped. Fits are ranked by stamp closeness to ESPN's start, then Dispatcharr
-    order.
+    dropped. Fits are ranked by ``tie_break``: stamp closeness to ESPN's start
+    (optionally preferring one M3U account first), or plain Dispatcharr order.
     """
     our_side: Literal["home", "away"] = "home" if is_home else "away"
     opp_side = "away" if is_home else "home"
@@ -137,17 +150,19 @@ def rank_candidates(
                 skip_term=skip,
                 time_delta_minutes=delta,
                 order=order,
+                m3u_account=_account_id(s.get("m3u_account")),
             )
         )
 
-    fits = sorted(
-        (c for c in out if c.kind == "fit"),
-        key=lambda c: (
-            c.time_delta_minutes is None,
-            c.time_delta_minutes or 0,
-            c.order,
-        ),
-    )
+    def fit_key(c: Candidate) -> tuple:
+        if tie_break == "first_listed":
+            return (c.order,)
+        by_time = (c.time_delta_minutes is None, c.time_delta_minutes or 0, c.order)
+        if tie_break == "prefer_account":
+            return (c.m3u_account != preferred_account_id, *by_time)
+        return by_time
+
+    fits = sorted((c for c in out if c.kind == "fit"), key=fit_key)
     rest = sorted(
         (c for c in out if c.kind != "fit"),
         key=lambda c: (c.kind == "skipped", c.order),
@@ -163,8 +178,14 @@ def summarize(
     candidates: list[Candidate],
     streams: list[dict[str, Any]],
     override_row: dict[str, Any] | None,
+    tie_break: TieBreak = "closest_time",
+    preferred_account_id: int | None = None,
 ) -> GameEvaluation:
-    """Pick the stream to route: an active override first, else the top fit."""
+    """Pick the stream to route: an active override first, else the top fit.
+
+    ``candidates`` must already be ranked by ``rank_candidates`` with the same
+    tie-break; this only explains the choice.
+    """
     fits = [c for c in candidates if c.kind == "fit"]
     ev = GameEvaluation(candidates=candidates, fits=fits)
 
@@ -199,7 +220,16 @@ def summarize(
                 second.time_delta_minutes is None
                 or top.time_delta_minutes < second.time_delta_minutes
             )
-            ev.rank_reason = "closest_time" if closer else "listed_first"
+            if tie_break == "first_listed":
+                ev.rank_reason = "listed_first"
+            elif (
+                tie_break == "prefer_account"
+                and top.m3u_account == preferred_account_id
+                and second.m3u_account != preferred_account_id
+            ):
+                ev.rank_reason = "preferred_account"
+            else:
+                ev.rank_reason = "closest_time" if closer else "listed_first"
     elif candidates:
         ev.status = "near_miss"
     return ev

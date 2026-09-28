@@ -16,7 +16,9 @@ from app.models import (
     PatternTestResponse,
 )
 from app.services.matcher import stream_check
+from app.services.overview import profiles_summary
 from app.services.patterns import compile_league_pattern, match_stream_name
+from app.settings_store import load_settings
 
 router = APIRouter(prefix="/profiles", tags=["profiles"])
 
@@ -58,6 +60,9 @@ async def create_profile(body: LeagueProfileCreate) -> LeagueProfileOut:
     except ValueError as e:
         raise HTTPException(400, str(e)) from e
     async with get_db() as db:
+        terms = body.exclude_terms
+        if terms is None:
+            terms = (await load_settings(db)).default_exclude_terms
         cur = await db.execute(
             """
             INSERT INTO league_profiles(
@@ -73,11 +78,40 @@ async def create_profile(body: LeagueProfileCreate) -> LeagueProfileOut:
                 body.espn_sport,
                 body.espn_league,
                 1 if body.enabled else 0,
-                json.dumps(_clean_terms(body.exclude_terms)),
+                json.dumps(_clean_terms(terms)),
                 body.m3u_account_id,
                 body.channel_group.strip(),
             ),
         )
+        await db.commit()
+        return await _fetch_profile(db, cur.lastrowid)
+
+
+@router.get("/summary")
+async def get_profiles_summary() -> dict[str, Any]:
+    """Every profile with its teams and today's ESPN games, each with a stream status."""
+    async with get_db() as db:
+        return await profiles_summary(db, await load_settings(db))
+
+
+@router.post("/{profile_id}/duplicate", response_model=LeagueProfileOut)
+async def duplicate_profile(profile_id: int) -> LeagueProfileOut:
+    """Copy a profile's settings as "{name} copy": disabled, with no teams."""
+    async with get_db() as db:
+        cur = await db.execute(
+            """
+            INSERT INTO league_profiles(
+                name, stream_pattern, stream_name_filter, espn_sport, espn_league, enabled,
+                exclude_terms_json, m3u_account_id, channel_group
+            )
+            SELECT name || ' copy', stream_pattern, stream_name_filter, espn_sport, espn_league, 0,
+                   exclude_terms_json, m3u_account_id, channel_group
+            FROM league_profiles WHERE id = ?
+            """,
+            (profile_id,),
+        )
+        if not cur.rowcount:
+            raise HTTPException(404, "Profile not found")
         await db.commit()
         return await _fetch_profile(db, cur.lastrowid)
 
@@ -222,7 +256,20 @@ async def patch_profile(profile_id: int, body: LeagueProfileUpdate) -> LeaguePro
 
 @router.delete("/{profile_id}")
 async def delete_profile(profile_id: int) -> dict[str, str]:
+    """Delete a profile and its team mappings; Dispatcharr channels are left as they are."""
     async with get_db() as db:
+        team_ids = "SELECT id FROM team_channels WHERE league_profile_id = ?"
+        for table in ("stream_overrides", "channel_restore"):
+            await db.execute(
+                f"DELETE FROM {table} WHERE team_channel_id IN ({team_ids})",
+                (profile_id,),
+            )
+        await db.execute(
+            "DELETE FROM team_channels WHERE league_profile_id = ?", (profile_id,)
+        )
+        await db.execute(
+            "DELETE FROM schedule_cache WHERE league_profile_id = ?", (profile_id,)
+        )
         await db.execute("DELETE FROM league_profiles WHERE id = ?", (profile_id,))
         await db.commit()
     return {"status": "ok"}

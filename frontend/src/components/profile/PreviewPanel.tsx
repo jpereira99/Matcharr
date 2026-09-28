@@ -1,5 +1,5 @@
 import { HighlightedTitle } from "@/components/HighlightedTitle";
-import { BigStat, StackedBar } from "@/components/StatSummary";
+import { BigStat, StackedBar, StatRow } from "@/components/StatSummary";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs } from "@/components/ui/tabs";
@@ -151,19 +151,21 @@ export function PreviewPanel({ items, gameCount, loading, error }: Props) {
   return (
     <div className="flex min-h-0 flex-col overflow-hidden rounded-(--radius-lg) border border-(--color-border)">
       <div className="flex flex-col gap-3 border-b border-(--color-border) px-5 py-4">
-        <div className="flex flex-wrap items-end gap-5">
-          <BigStat
-            value={nOk}
-            label="ready to route"
-            colorClass="text-(--color-success)"
-          />
-          {nConflict > 0 && (
+        <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
+          <StatRow>
             <BigStat
-              value={nConflict}
-              label="in conflict"
-              colorClass="text-(--color-warning)"
+              value={nOk}
+              label="ready to route"
+              colorClass="text-(--color-success)"
             />
-          )}
+            {nConflict > 0 && (
+              <BigStat
+                value={nConflict}
+                label="in conflict"
+                colorClass="text-(--color-warning)"
+              />
+            )}
+          </StatRow>
           <div className="ml-auto text-right text-xs text-(--color-muted)">
             {rows.length} streams checked
             <br />

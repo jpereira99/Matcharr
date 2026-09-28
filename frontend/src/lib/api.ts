@@ -3,9 +3,14 @@ import type {
   Dashboard,
   DispatcharrChannel,
   EspnTeam,
+  Health,
   LeagueProfile,
+  LeagueProfileCreate,
   LeagueProfileInput,
+  LogPage,
+  LogQuery,
   M3uAccount,
+  ProfilesSummary,
   StreamCheck,
   TeamChannel,
   TeamGamesResponse,
@@ -37,10 +42,14 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
   return r.json() as Promise<T>;
 }
 
-function query(params: Record<string, string | number | null | undefined>) {
+type QueryValue = string | number | null | undefined;
+
+function query(params: Record<string, QueryValue | QueryValue[]>) {
   const q = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) {
-    if (v !== null && v !== undefined) q.set(k, String(v));
+    for (const item of Array.isArray(v) ? v : [v]) {
+      if (item !== null && item !== undefined) q.append(k, String(item));
+    }
   }
   const s = q.toString();
   return s ? `?${s}` : "";
@@ -61,11 +70,17 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(body),
     }),
+  health: () => req<Health>("/health"),
   testDispatcharr: (dispatcharr_url?: string, dispatcharr_token?: string) =>
     req<{
       ok: boolean;
       message: string;
-      detail?: Record<string, unknown> | null;
+      detail?: {
+        latency_ms?: number;
+        channels?: number | null;
+        streams?: number | null;
+        [key: string]: unknown;
+      } | null;
     }>("/settings/test-dispatcharr", {
       method: "POST",
       body: JSON.stringify({ dispatcharr_url, dispatcharr_token }),
@@ -73,11 +88,14 @@ export const api = {
 
   listProfiles: () => req<LeagueProfile[]>("/profiles"),
   getProfile: (id: number) => req<LeagueProfile>(`/profiles/${id}`),
-  createProfile: (body: LeagueProfileInput) =>
+  profilesSummary: () => req<ProfilesSummary>("/profiles/summary"),
+  createProfile: (body: LeagueProfileCreate) =>
     req<LeagueProfile>("/profiles", {
       method: "POST",
       body: JSON.stringify(body),
     }),
+  duplicateProfile: (id: number) =>
+    req<LeagueProfile>(`/profiles/${id}/duplicate`, { method: "POST" }),
   updateProfile: (id: number, body: Partial<LeagueProfileInput>) =>
     req<LeagueProfile>(`/profiles/${id}`, {
       method: "PATCH",
@@ -120,7 +138,7 @@ export const api = {
     }),
 
   dashboard: () => req<Dashboard>("/dashboard"),
-  logs: (limit = 100) => req<Record<string, unknown>[]>(`/logs?limit=${limit}`),
+  logs: (q: LogQuery) => req<LogPage>(`/logs${query(q)}`),
   espnTeams: (sport: string, league: string) =>
     req<EspnTeam[]>(
       `/espn/teams?sport=${encodeURIComponent(sport)}&league=${encodeURIComponent(league)}`,
@@ -129,6 +147,11 @@ export const api = {
     req<DispatcharrChannel[]>(
       `/dispatcharr/channels?search=${encodeURIComponent(search)}`,
     ),
+  sampleStreams: (p: {
+    m3u_account_id: number | null;
+    channel_group: string;
+    limit: number;
+  }) => req<{ id: number; name: string }[]>(`/dispatcharr/streams${query(p)}`),
   m3uAccounts: () => req<M3uAccount[]>("/dispatcharr/m3u-accounts"),
   streamGroups: () => req<string[]>("/dispatcharr/stream-groups"),
   runNow: () =>

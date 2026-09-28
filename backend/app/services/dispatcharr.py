@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from typing import Any
 from urllib.parse import urljoin
 
@@ -107,12 +108,37 @@ class DispatcharrClient:
                 out["dispatcharr_api_error"] = parsed
         return out
 
+    async def _count(self, client: httpx.AsyncClient, path: str) -> int | None:
+        """Row count of a DRF list endpoint (one-row page) without fetching it all."""
+        try:
+            r = await client.get(
+                f"{self.base_url}{path}",
+                headers=self._headers(),
+                params={"page_size": 1},
+            )
+            r.raise_for_status()
+            data = r.json()
+        except Exception:
+            return None
+        if isinstance(data, list):
+            return len(data)
+        count = data.get("count")
+        return int(count) if isinstance(count, int) else None
+
     async def test_connection(self) -> tuple[bool, str, Any | None]:
+        """On success, detail carries latency_ms plus visible channel/stream counts."""
         url = f"{self.base_url}/api/channels/channels/"
         try:
             async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
+                started = time.perf_counter()
                 r = await client.get(
                     url, headers=self._headers(), params={"page_size": 1}
+                )
+                latency_ms = round((time.perf_counter() - started) * 1000)
+                streams = (
+                    await self._count(client, "/api/channels/streams/")
+                    if r.status_code < 400
+                    else None
                 )
         except Exception as e:
             detail = self._test_failure_detail(request_url=url, response=None, exc=e)
@@ -157,7 +183,45 @@ class DispatcharrClient:
                     detail["response_preview"][:500],
                 )
             return False, f"HTTP {r.status_code}", detail
-        return True, "OK", None
+        try:
+            data = r.json()
+            channels = (
+                len(data) if isinstance(data, list) else int(data.get("count") or 0)
+            )
+        except Exception:
+            channels = None
+        return (
+            True,
+            "OK",
+            {"latency_ms": latency_ms, "channels": channels, "streams": streams},
+        )
+
+    async def sample_streams(
+        self,
+        *,
+        m3u_account_id: int | None = None,
+        channel_group_name: str = "",
+        name_contains: str = "",
+        limit: int = 3,
+    ) -> list[dict[str, Any]]:
+        """First page of streams for the given filters (for example titles)."""
+        params: dict[str, Any] = {"page_size": limit}
+        if name_contains:
+            params["name"] = name_contains
+        if m3u_account_id is not None:
+            params["m3u_account"] = m3u_account_id
+        if channel_group_name:
+            params["channel_group_name"] = channel_group_name
+        async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
+            r = await client.get(
+                f"{self.base_url}/api/channels/streams/",
+                headers=self._headers(),
+                params=params,
+            )
+        r.raise_for_status()
+        data = r.json()
+        rows = data if isinstance(data, list) else data.get("results", [])
+        return rows[:limit]
 
     async def _get_all(self, path: str, params: dict[str, Any]) -> list[dict[str, Any]]:
         """GET a DRF list endpoint, following `next` links when paginated."""

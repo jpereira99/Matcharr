@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 const CAPTURE_STYLES: Record<string, string> = {
   home: "bg-(--color-capture-home)/18 text-(--color-capture-home-text)",
   away: "bg-(--color-capture-away)/20 text-(--color-capture-away-text)",
+  failed: "bg-(--color-danger)/18 text-(--color-capture-failed-text)",
 };
 const OTHER_CAPTURE = "bg-(--color-muted)/22 text-(--color-foreground)";
 

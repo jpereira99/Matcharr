@@ -20,7 +20,7 @@ const links = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/profiles", label: "League Profiles", icon: Trophy },
   { to: "/teams", label: "Team Channels", icon: Users },
-  { to: "/logs", label: "Activity Log", icon: Activity },
+  { to: "/activity", label: "Activity Log", icon: Activity },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 

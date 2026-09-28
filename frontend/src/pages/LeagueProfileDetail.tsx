@@ -1,5 +1,6 @@
 import { Breadcrumb, ColumnCaption } from "@/components/Breadcrumb";
 import { AddChip, Chip, SuggestionChip } from "@/components/ChipEditor";
+import { ConfirmDialog, deleteProfileBody } from "@/components/ConfirmDialog";
 import { LeagueLogo } from "@/components/LeagueBadge";
 import { PreviewPanel } from "@/components/profile/PreviewPanel";
 import { SettingsCard } from "@/components/profile/SettingsCard";
@@ -8,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { OverflowMenu } from "@/components/ui/menu";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Toggle } from "@/components/ui/toggle";
@@ -26,16 +28,20 @@ import {
   suggestSkipTerms,
   type PreviewContext,
 } from "@/lib/patterns";
-import type { LeagueProfile, LeagueProfileInput } from "@/lib/types";
+import type {
+  AppSettings,
+  LeagueProfile,
+  LeagueProfileInput,
+} from "@/lib/types";
 import {
   keepPreviousData,
   useMutation,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { Trophy } from "lucide-react";
+import { Copy, Trash2, Trophy } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 const NEW_PROFILE: LeagueProfileInput = {
   name: "",
@@ -74,7 +80,11 @@ export function LeagueProfileDetailPage() {
     staleTime: Infinity,
   });
 
-  useEffect(() => window.scrollTo(0, 0), [id]);
+  const [searchParams] = useSearchParams();
+  const openStep = searchParams.get("step");
+  useEffect(() => {
+    if (!openStep) window.scrollTo(0, 0);
+  }, [id, openStep]);
 
   if (isNew) return <ProfileEditor key="new" profile={null} />;
   if (q.isLoading)
@@ -102,13 +112,35 @@ export function LeagueProfileDetailPage() {
 function ProfileEditor({ profile }: { profile: LeagueProfile | null }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [saved, setSaved] = useState<LeagueProfileInput>(() =>
-    profile ? toForm(profile) : NEW_PROFILE,
+    profile
+      ? toForm(profile)
+      : {
+          ...NEW_PROFILE,
+          exclude_terms:
+            qc.getQueryData<AppSettings>(["settings"])?.default_exclude_terms ??
+            [],
+        },
   );
-  const [form, setForm] = useState<LeagueProfileInput>(saved);
+  // A draft from the Create dialog has no pattern yet; saving it turns it on.
+  const [form, setForm] = useState<LeagueProfileInput>(() =>
+    profile && !profile.stream_pattern.trim()
+      ? { ...saved, enabled: true }
+      : saved,
+  );
   const dirty = JSON.stringify(form) !== JSON.stringify(saved);
   const patch = (p: Partial<LeagueProfileInput>) =>
     setForm((f) => ({ ...f, ...p }));
+
+  const [streamsLoaded, setStreamsLoaded] = useState(false);
+  // Runs again once example titles load, since they make the page tall enough.
+  useEffect(() => {
+    if (searchParams.get("step") === "title")
+      document
+        .getElementById("title-format")
+        ?.scrollIntoView({ block: "start", behavior: "smooth" });
+  }, [searchParams, streamsLoaded]);
 
   useEffect(() => {
     if (!dirty) return;
@@ -145,6 +177,9 @@ function ProfileEditor({ profile }: { profile: LeagueProfile | null }) {
   });
 
   const check = checkQ.data;
+  useEffect(() => {
+    if (check?.streams.length) setStreamsLoaded(true);
+  }, [check]);
   const compiled = useMemo(
     () => compilePattern(form.stream_pattern),
     [form.stream_pattern],
@@ -173,6 +208,18 @@ function ProfileEditor({ profile }: { profile: LeagueProfile | null }) {
       })),
     [streams, compiled, ctx],
   );
+  const streamError =
+    check?.error ?? (checkQ.error ? checkQ.error.message : null);
+  const poolFit = useMemo(() => {
+    const kinds = items.map((i) => i.result.kind);
+    return {
+      fits: kinds.filter(
+        (k) => k === "matched" || k === "noteam" || k === "fit",
+      ).length,
+      skipped: kinds.filter((k) => k === "skipped").length,
+      total: kinds.length,
+    };
+  }, [items]);
   const evaluate = useCallback(
     (title: string) => evaluateStream(title, compiled, ctx),
     [compiled, ctx],
@@ -204,6 +251,51 @@ function ProfileEditor({ profile }: { profile: LeagueProfile | null }) {
       }
       setSaved(toForm(p));
       setForm(toForm(p));
+    },
+  });
+
+  // Saved, finished profiles switch on/off immediately (like the list); new
+  // profiles and drafts keep it as part of the form until they're saved.
+  const savedLive = !!profile && !!profile.stream_pattern.trim();
+  const toggleEnabled = useMutation({
+    mutationFn: (enabled: boolean) =>
+      api.updateProfile(profile!.id, { enabled }),
+    onMutate: (enabled) => {
+      setSaved((s) => ({ ...s, enabled }));
+      setForm((f) => ({ ...f, enabled }));
+    },
+    onError: (_e, enabled) => {
+      setSaved((s) => ({ ...s, enabled: !enabled }));
+      setForm((f) => ({ ...f, enabled: !enabled }));
+    },
+    onSuccess: (p) => {
+      qc.setQueryData(["profile", p.id], p);
+      void qc.invalidateQueries({ queryKey: ["profiles"] });
+      void qc.invalidateQueries({ queryKey: ["team-status"] });
+    },
+  });
+  function setEnabled(enabled: boolean) {
+    if (savedLive) toggleEnabled.mutate(enabled);
+    else patch({ enabled });
+  }
+
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const duplicate = useMutation({
+    mutationFn: () => api.duplicateProfile(profile!.id),
+    onSuccess: (copy) => {
+      qc.setQueryData(["profile", copy.id], copy);
+      void qc.invalidateQueries({ queryKey: ["profiles"] });
+      navigate(`/profiles/${copy.id}`);
+    },
+  });
+  const remove = useMutation({
+    mutationFn: () => api.deleteProfile(profile!.id),
+    onSuccess: () => {
+      qc.removeQueries({ queryKey: ["profile", profile!.id] });
+      void qc.invalidateQueries({ queryKey: ["profiles"] });
+      void qc.invalidateQueries({ queryKey: ["team-channels"] });
+      void qc.invalidateQueries({ queryKey: ["team-status"] });
+      navigate("/profiles");
     },
   });
 
@@ -250,12 +342,30 @@ function ProfileEditor({ profile }: { profile: LeagueProfile | null }) {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {dirty && (
             <span className="mr-1 text-xs text-(--color-muted)">
               Unsaved changes
             </span>
           )}
+          <div
+            className="mr-2 flex items-center gap-2"
+            title={
+              savedLive
+                ? "Takes effect right away"
+                : "Saved with the rest of the profile"
+            }
+          >
+            <span className="text-xs text-(--color-muted)">
+              {form.enabled ? "On" : "Off"}
+            </span>
+            <Toggle
+              checked={form.enabled}
+              onChange={setEnabled}
+              disabled={toggleEnabled.isPending}
+              label={form.enabled ? "Turn profile off" : "Turn profile on"}
+            />
+          </div>
           <Button
             variant="ghost"
             onClick={() => {
@@ -269,13 +379,44 @@ function ProfileEditor({ profile }: { profile: LeagueProfile | null }) {
           <Button onClick={() => save.mutate(form)} disabled={!canSave}>
             {save.isPending ? "Saving..." : "Save Changes"}
           </Button>
+          {profile && (
+            <OverflowMenu
+              items={[
+                {
+                  label: "Duplicate",
+                  icon: Copy,
+                  onSelect: () => duplicate.mutate(),
+                  disabled: duplicate.isPending,
+                },
+                {
+                  label: "Delete…",
+                  icon: Trash2,
+                  onSelect: () => setDeleteOpen(true),
+                  danger: true,
+                },
+              ]}
+            />
+          )}
         </div>
       </header>
 
-      {save.error && (
+      {(save.error || toggleEnabled.error || duplicate.error) && (
         <p className="-mt-3 text-right text-xs text-(--color-danger)">
-          {save.error.message}
+          {(save.error ?? toggleEnabled.error ?? duplicate.error)?.message}
         </p>
+      )}
+
+      {profile && (
+        <ConfirmDialog
+          open={deleteOpen}
+          title={`Delete ${profile.name}?`}
+          confirmLabel="Delete profile"
+          pending={remove.isPending}
+          onCancel={() => setDeleteOpen(false)}
+          onConfirm={() => remove.mutate()}
+        >
+          {deleteProfileBody(profile.team_channel_count ?? 0)}
+        </ConfirmDialog>
       )}
 
       <div
@@ -346,16 +487,6 @@ function ProfileEditor({ profile }: { profile: LeagueProfile | null }) {
                   </div>
                 </>
               )}
-            </div>
-            <div className="flex items-center gap-2.5">
-              <Toggle
-                checked={form.enabled}
-                onChange={(v) => patch({ enabled: v })}
-                label="Enabled"
-              />
-              <span className="text-sm">
-                {form.enabled ? "Enabled" : "Disabled"}
-              </span>
             </div>
           </SettingsCard>
 
@@ -445,6 +576,11 @@ function ProfileEditor({ profile }: { profile: LeagueProfile | null }) {
 
           <TitleFormatCard
             titles={titles}
+            status={
+              checkQ.isLoading ? "loading" : streamError ? "error" : "ready"
+            }
+            error={streamError}
+            poolFit={poolFit}
             pattern={form.stream_pattern}
             compiled={compiled}
             evaluate={evaluate}
@@ -499,7 +635,7 @@ function ProfileEditor({ profile }: { profile: LeagueProfile | null }) {
             items={items}
             gameCount={check?.games.length ?? 0}
             loading={checkQ.isLoading}
-            error={check?.error ?? (checkQ.error ? checkQ.error.message : null)}
+            error={streamError}
           />
         </div>
       </div>
