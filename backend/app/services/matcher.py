@@ -253,12 +253,15 @@ async def _ensure_schedule_cache(
     return await _cached_games(db, pid)
 
 
-async def refresh_all_schedules(db: aiosqlite.Connection) -> None:
+async def refresh_all_schedules(db: aiosqlite.Connection) -> dict[str, int]:
+    """Pull ESPN games for every enabled profile. Returns cached game count per profile name."""
     settings = await load_settings(db)
     profiles = await _get_profiles(db)
+    counts: dict[str, int] = {}
     for p in profiles:
-        await _ensure_schedule_cache(db, p, settings)
+        counts[str(p["name"])] = len(await _ensure_schedule_cache(db, p, settings))
     await kv_set(db, "last_schedule_refresh", datetime.now(timezone.utc).isoformat())
+    return counts
 
 
 async def maybe_refresh_schedules(db: aiosqlite.Connection) -> None:

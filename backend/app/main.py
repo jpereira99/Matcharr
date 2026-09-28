@@ -18,6 +18,7 @@ from app.routers import (
     dashboard,
     dispatcharr_proxy,
     espn_data,
+    jobs,
     logs,
     profiles,
     routing_preview,
@@ -64,6 +65,7 @@ def create_app() -> FastAPI:
     app.include_router(espn_data.router, prefix="/api")
     app.include_router(dispatcharr_proxy.router, prefix="/api")
     app.include_router(run.router, prefix="/api")
+    app.include_router(jobs.router, prefix="/api")
     app.include_router(routing_preview.router, prefix="/api")
 
     static_dir = settings_obj.static_dir

@@ -156,6 +156,8 @@ export const api = {
   streamGroups: () => req<string[]>("/dispatcharr/stream-groups"),
   runNow: () =>
     req<{ ok: boolean; message: string }>("/run-now", { method: "POST" }),
+  runJob: (job: "espn-refresh" | "match-cycle") =>
+    req<{ ok: boolean; message: string }>(`/jobs/${job}`, { method: "POST" }),
   routingPreview: () =>
     req<{
       ok: boolean;

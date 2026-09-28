@@ -98,3 +98,31 @@ def test_spa_serves_root_static_files(tmp_path, monkeypatch):
         assert client.get("/..%2Fsecret.txt").text == "<html>app</html>"
     finally:
         get_settings.cache_clear()
+
+
+def test_manual_jobs(env, monkeypatch):
+    from app.services import espn
+
+    client, _ = env
+    calls: list[tuple[str, str]] = []
+
+    async def fake_games(sport, league, days):
+        calls.append((sport, league))
+        return []
+
+    monkeypatch.setattr(espn, "fetch_games_for_league", fake_games)
+    r = client.post("/api/jobs/espn-refresh").json()
+    assert r["ok"] and r["message"].startswith("Cached 1 game for 1 league profile")
+    assert calls == [("soccer", "usa.1")]
+    assert client.get("/api/health").json()["last_schedule_refresh"]
+
+    async def broken(sport, league, days):
+        raise RuntimeError("ESPN down")
+
+    monkeypatch.setattr(espn, "fetch_games_for_league", broken)
+    r = client.post("/api/jobs/espn-refresh").json()
+    assert not r["ok"] and "ESPN down" in r["message"]
+
+    r = client.post("/api/jobs/match-cycle").json()
+    assert r["ok"] and r["message"].startswith("Completed")
+    assert client.get("/api/health").json()["last_scan_at"]

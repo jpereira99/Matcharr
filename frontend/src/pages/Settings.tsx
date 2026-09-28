@@ -18,8 +18,10 @@ import {
   Clock,
   Eye,
   EyeOff,
+  LoaderCircle,
   Monitor,
   Moon,
+  Play,
   Plug,
   Route,
   Save,
@@ -28,6 +30,86 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+
+const JOB_QUERY_KEYS = [
+  "health",
+  "dashboard",
+  "team-status",
+  "team-games",
+  "profiles",
+  "profile",
+  "stream-check",
+  "logs",
+];
+
+function JobRow({
+  job,
+  title,
+  description,
+  lastRun,
+}: {
+  job: "espn-refresh" | "match-cycle";
+  title: string;
+  description: string;
+  lastRun?: string | null;
+}) {
+  const qc = useQueryClient();
+  const run = useMutation({
+    mutationFn: () => api.runJob(job),
+    onSettled: () =>
+      JOB_QUERY_KEYS.forEach(
+        (k) => void qc.invalidateQueries({ queryKey: [k] }),
+      ),
+  });
+  const failed = run.isError || (run.data && !run.data.ok);
+  const message = run.error?.message ?? run.data?.message;
+
+  return (
+    <div className="flex flex-col gap-2 rounded-(--radius-md) border border-(--color-border) px-3 py-2.5">
+      <div className="flex items-start gap-3">
+        <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
+          <span className="text-[13px] font-semibold">{title}</span>
+          <span className="text-xs text-(--color-muted)">{description}</span>
+          <span className="text-xs text-(--color-muted)">
+            Last ran{" "}
+            <span className="text-(--color-foreground)">
+              {lastRun ? fmtAgo(lastRun) : "never"}
+            </span>
+          </span>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="flex-none"
+          onClick={() => run.mutate()}
+          disabled={run.isPending}
+        >
+          {run.isPending ? (
+            <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Play className="h-3.5 w-3.5" />
+          )}
+          {run.isPending ? "Running…" : "Run now"}
+        </Button>
+      </div>
+      {!run.isPending && message && (
+        <p
+          className={cn(
+            "flex items-start gap-1.5 text-xs",
+            failed ? "text-(--color-danger)" : "text-(--color-success)",
+          )}
+        >
+          {failed ? (
+            <XCircle className="mt-px h-3.5 w-3.5 flex-none" />
+          ) : (
+            <CircleCheck className="mt-px h-3.5 w-3.5 flex-none" />
+          )}
+          <span className="min-w-0 break-words">{message}</span>
+        </p>
+      )}
+    </div>
+  );
+}
 
 /** Mirrors DispatcharrClient._looks_like_jwt: three non-empty dot-separated parts. */
 function looksLikeJwt(token: string) {
@@ -582,6 +664,34 @@ export function SettingsPage() {
           </span>
           .
         </p>
+
+        <div className="border-t border-(--color-border) pt-4">
+          <Label className="mb-1">Run jobs now</Label>
+          <p className="mb-2.5 text-xs text-(--color-muted)">
+            Runs a scheduled job right away with your saved settings. The
+            regular schedule carries on as usual.
+          </p>
+          <div
+            className="grid gap-2"
+            style={{
+              gridTemplateColumns:
+                "repeat(auto-fit, minmax(min(100%, 320px), 1fr))",
+            }}
+          >
+            <JobRow
+              job="espn-refresh"
+              title="Refresh ESPN schedules"
+              description="Re-download games for every league profile. Use after adding a league or team, or when a game time changes."
+              lastRun={health?.last_schedule_refresh}
+            />
+            <JobRow
+              job="match-cycle"
+              title="Run stream matching"
+              description={`Check streams and switch channels now, same as the job that runs every ${form.scan_interval_minutes} min.`}
+              lastRun={health?.last_scan_at}
+            />
+          </div>
+        </div>
       </SettingsCard>
 
       <SettingsCard icon={Monitor} title="Display">

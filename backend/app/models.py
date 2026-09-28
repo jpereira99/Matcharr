@@ -171,6 +171,7 @@ class HealthOut(BaseModel):
     dispatcharr_latency_ms: int | None = None
     dispatcharr_checked_at: str | None = None
     last_schedule_refresh: str | None = None
+    last_scan_at: str | None = None
     next_scan_at: str | None = None
     scheduler_running: bool = False
 

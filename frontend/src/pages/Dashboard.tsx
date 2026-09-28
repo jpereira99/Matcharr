@@ -312,7 +312,7 @@ export function DashboardPage() {
             disabled={preview.isPending}
           >
             <Route className="h-3.5 w-3.5" />
-            {preview.isPending ? "Checking..." : "Check Routing"}
+            {preview.isPending ? "Previewing..." : "Preview Routing"}
           </Button>
           <Button
             size="sm"

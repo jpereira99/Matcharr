@@ -20,6 +20,7 @@ export type Health = {
   dispatcharr_latency_ms: number | null;
   dispatcharr_checked_at: string | null;
   last_schedule_refresh: string | null;
+  last_scan_at: string | null;
   next_scan_at: string | null;
   scheduler_running: boolean;
 };

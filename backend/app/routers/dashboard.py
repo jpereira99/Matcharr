@@ -156,6 +156,7 @@ async def health() -> HealthOut:
     async with get_db() as db:
         await db.execute("SELECT 1")
         last_refresh = await kv_get(db, "last_schedule_refresh")
+        last_scan = await kv_get(db, "last_match_cycle_at")
         settings = await load_settings(db)
     next_s, sched_running = get_scheduler_status()
     da_ok, latency_ms, checked_at = await _dispatcharr_health(settings)
@@ -165,6 +166,7 @@ async def health() -> HealthOut:
         dispatcharr_latency_ms=latency_ms,
         dispatcharr_checked_at=checked_at,
         last_schedule_refresh=last_refresh,
+        last_scan_at=last_scan,
         next_scan_at=next_s,
         scheduler_running=sched_running,
     )
