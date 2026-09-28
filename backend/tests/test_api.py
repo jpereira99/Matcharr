@@ -70,3 +70,31 @@ def test_profile_patch_and_stream_check(env):
         ]
         == 7
     )
+
+
+def test_spa_serves_root_static_files(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from app.config import get_settings
+    from app.main import create_app
+
+    static = tmp_path / "static"
+    static.mkdir()
+    (static / "index.html").write_text("<html>app</html>")
+    (static / "favicon.ico").write_bytes(b"ico")
+    (static / "espn-assets-sw.js").write_text(
+        "self.addEventListener('fetch', () => {})"
+    )
+    (tmp_path / "secret.txt").write_text("nope")
+    monkeypatch.setenv("MA_DATA_DIR", str(tmp_path / "data"))
+    monkeypatch.setenv("MA_STATIC_DIR", str(static))
+    get_settings.cache_clear()
+    try:
+        client = TestClient(create_app())
+        assert client.get("/favicon.ico").content == b"ico"
+        sw = client.get("/espn-assets-sw.js")
+        assert "javascript" in sw.headers["content-type"]
+        assert client.get("/teams/3").text == "<html>app</html>"
+        assert client.get("/..%2Fsecret.txt").text == "<html>app</html>"
+    finally:
+        get_settings.cache_clear()

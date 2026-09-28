@@ -80,6 +80,11 @@ def create_app() -> FastAPI:
         async def spa(full_path: str) -> FileResponse:
             if full_path.startswith("api"):
                 raise HTTPException(404)
+            # Root-level files from frontend/public (favicons, service worker).
+            root = Path(static_dir).resolve()
+            file = (root / full_path).resolve()
+            if full_path and file.is_file() and file.is_relative_to(root):
+                return FileResponse(file)
             idx = Path(static_dir) / "index.html"
             if idx.is_file():
                 return FileResponse(idx)

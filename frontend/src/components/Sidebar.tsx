@@ -6,7 +6,6 @@ import {
   ChevronRight,
   LayoutDashboard,
   Menu,
-  Radio,
   Settings,
   Trophy,
   Users,
@@ -14,6 +13,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
+import { Brand } from "./Brand";
 import { ThemeToggle } from "./ui/theme-toggle";
 
 const links = [
@@ -34,17 +34,11 @@ function SidebarContent({ collapsed }: { collapsed: boolean }) {
           collapsed ? "justify-center" : "gap-3",
         )}
       >
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-(--radius-lg) bg-(--color-accent) shadow-md">
-          <Radio className="h-4.5 w-4.5 text-(--color-accent-foreground)" />
-        </div>
-        {!collapsed && (
-          <div className="min-w-0">
-            <div className="font-heading text-sm font-extrabold tracking-tight text-(--color-foreground)">
-              Matcharr
-            </div>
-            <div className="text-[10px] text-(--color-muted)">
-              Stream Router
-            </div>
+        {collapsed ? (
+          <Brand markOnly className="h-[21px]" />
+        ) : (
+          <div className="flex h-9 items-center">
+            <Brand className="h-6" />
           </div>
         )}
       </div>
@@ -105,12 +99,7 @@ export function Sidebar() {
         >
           <Menu className="h-5 w-5" />
         </button>
-        <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-(--radius-md) bg-(--color-accent)">
-            <Radio className="h-3.5 w-3.5 text-(--color-accent-foreground)" />
-          </div>
-          <span className="font-heading text-sm font-extrabold">Matcharr</span>
-        </div>
+        <Brand className="h-5" />
       </div>
 
       {/* Mobile drawer overlay */}

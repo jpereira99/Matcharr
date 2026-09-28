@@ -1,6 +1,13 @@
-# ⚽ Matcharr
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/logos/MatcharrFullDark.png">
+    <img alt="Matcharr" src="docs/logos/MatcharrFull.png" width="420">
+  </picture>
+</p>
 
-[![CI](https://github.com/jpereira99/Matcharr/actions/workflows/ci.yml/badge.svg)](https://github.com/jpereira99/Matcharr/actions/workflows/ci.yml)
+<p align="center">
+  <a href="https://github.com/jpereira99/Matcharr/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/jpereira99/Matcharr/actions/workflows/ci.yml/badge.svg"></a>
+</p>
 
 **Matcharr** is a companion service for [Dispatcharr](https://github.com/Dispatcharr/Dispatcharr): it reads ESPN schedules, matches live stream titles to per-league patterns, and updates your team’s virtual Dispatcharr channel to the right stream when a game is in the routing window.
 
