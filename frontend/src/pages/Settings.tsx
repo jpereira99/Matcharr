@@ -199,7 +199,7 @@ export function SettingsPage() {
     return <div className="text-(--color-danger)">Failed to load settings</div>;
   if (q.isLoading || !form)
     return (
-      <div className="flex max-w-[880px] flex-col gap-5">
+      <div className="flex flex-col gap-5">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-64" />
         <Skeleton className="h-80" />
@@ -237,7 +237,7 @@ export function SettingsPage() {
   const testDetail = test.data?.detail;
 
   return (
-    <div className="flex max-w-[880px] flex-col gap-5">
+    <div className="flex flex-col gap-5">
       <header>
         <h1 className="font-heading text-2xl font-extrabold tracking-tight">
           Settings
@@ -264,53 +264,62 @@ export function SettingsPage() {
           )
         }
       >
-        <div>
-          <Label htmlFor="dispatcharr-url">Dispatcharr URL</Label>
-          <Input
-            id="dispatcharr-url"
-            value={form.dispatcharr_url}
-            onChange={(e) => update({ dispatcharr_url: e.target.value })}
-            placeholder="http://dispatcharr:9191"
-          />
-        </div>
-        <div>
-          <Label htmlFor="dispatcharr-token">API Token</Label>
-          <div className="flex items-center rounded-(--radius-md) border border-(--color-border) bg-(--color-surface) pr-1 transition-all duration-150 focus-within:border-(--color-accent) focus-within:ring-2 focus-within:ring-(--color-accent)/30">
-            <input
-              id="dispatcharr-token"
-              type={showToken ? "text" : "password"}
-              value={form.dispatcharr_token}
-              onChange={(e) => update({ dispatcharr_token: e.target.value })}
-              spellCheck={false}
-              autoComplete="off"
-              placeholder="API key or JWT access token"
-              className="min-w-0 flex-1 border-none bg-transparent px-3 py-2 font-mono text-[13px] text-(--color-foreground) outline-none placeholder:font-sans placeholder:text-(--color-muted) focus-visible:ring-0 focus-visible:ring-offset-0"
+        <div
+          className="grid items-start gap-3.5"
+          style={{
+            gridTemplateColumns:
+              "repeat(auto-fit, minmax(min(100%, 320px), 1fr))",
+          }}
+        >
+          <div>
+            <Label htmlFor="dispatcharr-url">Dispatcharr URL</Label>
+            <Input
+              id="dispatcharr-url"
+              value={form.dispatcharr_url}
+              onChange={(e) => update({ dispatcharr_url: e.target.value })}
+              placeholder="http://dispatcharr:9191"
             />
-            <button
-              type="button"
-              onClick={() => setShowToken(!showToken)}
-              aria-label={showToken ? "Hide token" : "Show token"}
-              className="flex cursor-pointer rounded-(--radius-sm) p-1.5 text-(--color-muted) transition-colors duration-150 hover:bg-(--color-surface-raised) hover:text-(--color-foreground)"
-            >
-              {showToken ? (
-                <EyeOff className="h-4 w-4" />
-              ) : (
-                <Eye className="h-4 w-4" />
-              )}
-            </button>
           </div>
-          <p className="mt-1 text-xs text-(--color-muted)">
-            {form.dispatcharr_token.trim() ? (
-              <>
-                Detected as {jwt ? "a JWT access token" : "an API key"}. Sent as{" "}
-                <span className="font-mono text-(--color-foreground)">
-                  Authorization: {jwt ? "Bearer" : "ApiKey"} …
-                </span>
-              </>
-            ) : (
-              "Paste a Dispatcharr API key or a JWT access token."
-            )}
-          </p>
+          <div>
+            <Label htmlFor="dispatcharr-token">API Token</Label>
+            <div className="flex items-center rounded-(--radius-md) border border-(--color-border) bg-(--color-surface) pr-1 transition-all duration-150 focus-within:border-(--color-accent) focus-within:ring-2 focus-within:ring-(--color-accent)/30">
+              <input
+                id="dispatcharr-token"
+                type={showToken ? "text" : "password"}
+                value={form.dispatcharr_token}
+                onChange={(e) => update({ dispatcharr_token: e.target.value })}
+                spellCheck={false}
+                autoComplete="off"
+                placeholder="API key or JWT access token"
+                className="min-w-0 flex-1 border-none bg-transparent px-3 py-2 font-mono text-[13px] text-(--color-foreground) outline-none placeholder:font-sans placeholder:text-(--color-muted) focus-visible:ring-0 focus-visible:ring-offset-0"
+              />
+              <button
+                type="button"
+                onClick={() => setShowToken(!showToken)}
+                aria-label={showToken ? "Hide token" : "Show token"}
+                className="flex cursor-pointer rounded-(--radius-sm) p-1.5 text-(--color-muted) transition-colors duration-150 hover:bg-(--color-surface-raised) hover:text-(--color-foreground)"
+              >
+                {showToken ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-(--color-muted)">
+              {form.dispatcharr_token.trim() ? (
+                <>
+                  Detected as {jwt ? "a JWT access token" : "an API key"}. Sent
+                  as{" "}
+                  <span className="font-mono text-(--color-foreground)">
+                    Authorization: {jwt ? "Bearer" : "ApiKey"} …
+                  </span>
+                </>
+              ) : (
+                "Paste a Dispatcharr API key or a JWT access token."
+              )}
+            </p>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <Button
@@ -633,7 +642,7 @@ export function SettingsPage() {
       )}
 
       <div className="sticky bottom-0 -mx-5 -mb-5 border-t border-(--color-border) bg-(--color-background)/95 px-5 py-3 backdrop-blur-sm md:-mx-8 md:-mb-8 md:px-8 lg:-mx-10 lg:-mb-10 lg:px-10">
-        <div className="flex max-w-[880px] items-center justify-between">
+        <div className="flex items-center justify-between">
           <span className="text-sm text-(--color-muted)">
             {dirty ? "You have unsaved changes." : "All changes saved."}
           </span>
