@@ -113,5 +113,5 @@ export function attentionIssue(
     return `${g.fit_count} streams fit. Using ${PICKED[g.rank_reason ?? "listed_first"]}.`;
   if (g.near_miss?.text)
     return `No match: “${g.near_miss.text}” isn't a known name.`;
-  return "No match: no stream fits the title format.";
+  return "No match: no current stream fits the title format.";
 }

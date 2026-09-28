@@ -7,6 +7,7 @@ import {
   aliasFromHow,
   deriveTokens,
   exampleFromPattern,
+  matchSpans,
   patternFromTokens,
   setTokenType,
   type Compiled,
@@ -21,7 +22,7 @@ import {
   MousePointerClick,
   Pencil,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { SettingsCard } from "./SettingsCard";
 
 const MAX_EXAMPLES = 300;
@@ -107,16 +108,21 @@ function checkMessage(
   }
 }
 
+/** A pool title the pattern fits, or null. Never falls back to an arbitrary title. */
 function pickDefaultExample(
   titles: string[],
   evaluate: (t: string) => PreviewResult,
-): string {
+  compiled: Compiled,
+): string | null {
   const kinds = titles.map((t) => evaluate(t).kind);
-  const i =
-    kinds.indexOf("matched") >= 0
-      ? kinds.indexOf("matched")
-      : kinds.findIndex((k) => k === "noteam" || k === "fit");
-  return titles[Math.max(i, 0)] ?? "";
+  for (const kind of ["matched", "noteam", "fit"] as const) {
+    const i = kinds.indexOf(kind);
+    if (i >= 0) return titles[i];
+  }
+  const skipped = kinds.findIndex(
+    (k, i) => k === "skipped" && matchSpans(compiled, titles[i]),
+  );
+  return skipped >= 0 ? titles[skipped] : null;
 }
 
 export function TitleFormatCard({
@@ -129,7 +135,9 @@ export function TitleFormatCard({
   onPatternChange,
   evaluate,
 }: Props) {
-  const [example, setExample] = useState<string | null>(null);
+  // A stream the user picked. Null follows the pattern: a fitting pool title,
+  // or none. A raw pattern must not be visualized from an unrelated title.
+  const [manualExample, setManualExample] = useState<string | null>(null);
   // Title pasted when there are no pool streams to pick from. `auto` entries are
   // stand-ins built from the pattern, pinned while tagging so chips don't jump.
   const [typedExample, setTypedExample] = useState<{
@@ -142,26 +150,24 @@ export function TitleFormatCard({
     null,
   );
 
-  // Pin an example once streams load; re-pick only if it leaves the pool.
-  useEffect(() => {
-    if (!titles.length) return;
-    if (example === null || !titles.includes(example)) {
-      setExample(pickDefaultExample(titles, evaluate));
-      setSelected(null);
-    }
-  }, [titles]);
-
   const loading = status === "loading";
   const hasExamples = status === "ready" && titles.length > 0;
-  const pasted = typedExample && !typedExample.auto ? typedExample.text : "";
-  // The title the pattern is checked against: a pool stream or a pasted title.
-  const realExample = hasExamples
-    ? example !== null && titles.includes(example)
-      ? example
-      : titles[0]
-    : pasted;
-  // Chips can fall back to a stand-in built from the pattern, but it's never
-  // checked against ESPN or shown as the example.
+  const autoExample = useMemo(
+    () =>
+      hasExamples && compiled.ok
+        ? pickDefaultExample(titles, evaluate, compiled)
+        : null,
+    [hasExamples, titles, evaluate, compiled],
+  );
+  const pasted =
+    !hasExamples && typedExample && !typedExample.auto ? typedExample.text : "";
+  // A pool title only when it was chosen or the pattern fits it. Otherwise the
+  // chips come from the pattern, and the preview keeps using the pattern too.
+  const poolExample =
+    hasExamples && manualExample && titles.includes(manualExample)
+      ? manualExample
+      : autoExample;
+  const realExample = poolExample || pasted;
   const tokenSource =
     realExample ||
     (typedExample?.auto ? typedExample.text : exampleFromPattern(pattern));
@@ -190,7 +196,8 @@ export function TitleFormatCard({
     if (!tokens[sel] || tokens[sel].type === type) return;
     const next = setTokenType(tokens, sel, type);
     const p = patternFromTokens(next);
-    if (!realExample) setTypedExample({ text: tokenSource, auto: true });
+    if (realExample && hasExamples) setManualExample(realExample);
+    else setTypedExample({ text: tokenSource, auto: true });
     setEdited({ key: `${tokenSource}\u0000${p}`, tokens: next });
     onPatternChange(p);
   }
@@ -199,6 +206,11 @@ export function TitleFormatCard({
   if (loading) check = null;
   else if (realExample) check = checkMessage(evaluate(realExample), pattern);
   else if (!compiled.ok) check = { ok: false, text: compiled.error };
+  else if (pattern.trim() && hasExamples)
+    check = {
+      ok: false,
+      text: "No stream in this pool fits the pattern. These parts come from the pattern itself. The preview still checks every stream against it.",
+    };
   else if (pattern.trim())
     check = {
       ok: false,
@@ -247,11 +259,15 @@ export function TitleFormatCard({
               mono
               value={realExample}
               onChange={(e) => {
-                setExample(e.target.value);
+                setManualExample(e.target.value || null);
                 setSelected(null);
+                setEdited(null);
                 setTextMode(false);
               }}
             >
+              {!realExample && (
+                <option value="">No current stream fits this pattern</option>
+              )}
               {options.map((t) => (
                 <option key={t} value={t}>
                   {t}
@@ -297,7 +313,12 @@ export function TitleFormatCard({
             <Input
               id="pattern-text"
               value={pattern}
-              onChange={(e) => onPatternChange(e.target.value)}
+              onChange={(e) => {
+                setManualExample(null);
+                if (typedExample?.auto) setTypedExample(null);
+                setEdited(null);
+                onPatternChange(e.target.value);
+              }}
               spellCheck={false}
               aria-invalid={!compiled.ok}
               placeholder="e.g. MLB {n} | {away} x {home} start:{time}"

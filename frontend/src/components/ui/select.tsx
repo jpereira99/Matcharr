@@ -270,7 +270,7 @@ export function Select({
             !selected && "text-(--color-muted)",
           )}
         >
-          {selected?.label ?? options[0]?.label ?? "\u00a0"}
+          {selected?.label ?? "Select…"}
         </span>
         <ChevronDown
           className={cn(
