@@ -1,9 +1,20 @@
 import type {
   AppSettings,
   Dashboard,
+  DispatcharrChannel,
   EspnTeam,
+  Health,
   LeagueProfile,
+  LeagueProfileCreate,
+  LeagueProfileInput,
+  LogPage,
+  LogQuery,
+  M3uAccount,
+  ProfilesSummary,
+  StreamCheck,
   TeamChannel,
+  TeamGamesResponse,
+  TeamStatusResponse,
 } from "./types";
 
 const BASE = "/api";
@@ -18,11 +29,39 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!r.ok) {
     const t = await r.text();
-    throw new Error(t || r.statusText);
+    let message = t || r.statusText;
+    try {
+      const detail = (JSON.parse(t) as { detail?: unknown }).detail;
+      if (typeof detail === "string") message = detail;
+    } catch {
+      /* not JSON */
+    }
+    throw new Error(message);
   }
   if (r.status === 204) return undefined as T;
   return r.json() as Promise<T>;
 }
+
+type QueryValue = string | number | null | undefined;
+
+function query(params: Record<string, QueryValue | QueryValue[]>) {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    for (const item of Array.isArray(v) ? v : [v]) {
+      if (item !== null && item !== undefined) q.append(k, String(item));
+    }
+  }
+  const s = q.toString();
+  return s ? `?${s}` : "";
+}
+
+export type StreamCheckParams = {
+  espn_sport: string;
+  espn_league: string;
+  m3u_account_id: number | null;
+  channel_group: string;
+  contains: string;
+};
 
 export const api = {
   getSettings: () => req<AppSettings>("/settings"),
@@ -31,42 +70,41 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(body),
     }),
+  health: () => req<Health>("/health"),
   testDispatcharr: (dispatcharr_url?: string, dispatcharr_token?: string) =>
     req<{
       ok: boolean;
       message: string;
-      detail?: Record<string, unknown> | null;
+      detail?: {
+        latency_ms?: number;
+        channels?: number | null;
+        streams?: number | null;
+        [key: string]: unknown;
+      } | null;
     }>("/settings/test-dispatcharr", {
       method: "POST",
       body: JSON.stringify({ dispatcharr_url, dispatcharr_token }),
     }),
 
   listProfiles: () => req<LeagueProfile[]>("/profiles"),
-  createProfile: (
-    body: Partial<LeagueProfile> & {
-      name: string;
-      stream_pattern: string;
-      espn_sport: string;
-      espn_league: string;
-    },
-  ) =>
+  getProfile: (id: number) => req<LeagueProfile>(`/profiles/${id}`),
+  profilesSummary: () => req<ProfilesSummary>("/profiles/summary"),
+  createProfile: (body: LeagueProfileCreate) =>
     req<LeagueProfile>("/profiles", {
       method: "POST",
       body: JSON.stringify(body),
     }),
-  updateProfile: (id: number, body: Partial<LeagueProfile>) =>
+  duplicateProfile: (id: number) =>
+    req<LeagueProfile>(`/profiles/${id}/duplicate`, { method: "POST" }),
+  updateProfile: (id: number, body: Partial<LeagueProfileInput>) =>
     req<LeagueProfile>(`/profiles/${id}`, {
-      method: "PUT",
+      method: "PATCH",
       body: JSON.stringify(body),
     }),
   deleteProfile: (id: number) => req(`/profiles/${id}`, { method: "DELETE" }),
-  testPattern: (pattern: string, stream_name: string) =>
-    req<{ matched: boolean; groups: Record<string, string>; error?: string }>(
-      "/profiles/test-pattern",
-      {
-        method: "POST",
-        body: JSON.stringify({ pattern, stream_name }),
-      },
+  streamCheck: (profileId: number | null, p: StreamCheckParams) =>
+    req<StreamCheck>(
+      `/profiles/${profileId ?? ""}${profileId ? "/" : ""}stream-check${query(p)}`,
     ),
 
   listTeamChannels: () => req<TeamChannel[]>("/team-channels"),
@@ -82,19 +120,44 @@ export const api = {
     }),
   deleteTeamChannel: (id: number) =>
     req(`/team-channels/${id}`, { method: "DELETE" }),
+  teamStatus: () => req<TeamStatusResponse>("/team-channels/status"),
+  teamGames: (id: number) =>
+    req<TeamGamesResponse>(`/team-channels/${id}/games`),
+  putOverride: (
+    id: number,
+    eventId: string,
+    body: { stream_id: number; stream_name: string },
+  ) =>
+    req(`/team-channels/${id}/overrides/${encodeURIComponent(eventId)}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  deleteOverride: (id: number, eventId: string) =>
+    req(`/team-channels/${id}/overrides/${encodeURIComponent(eventId)}`, {
+      method: "DELETE",
+    }),
 
   dashboard: () => req<Dashboard>("/dashboard"),
-  logs: (limit = 100) => req<Record<string, unknown>[]>(`/logs?limit=${limit}`),
+  logs: (q: LogQuery) => req<LogPage>(`/logs${query(q)}`),
   espnTeams: (sport: string, league: string) =>
     req<EspnTeam[]>(
       `/espn/teams?sport=${encodeURIComponent(sport)}&league=${encodeURIComponent(league)}`,
     ),
   dispatcharrChannels: (search = "") =>
-    req<Record<string, unknown>[]>(
+    req<DispatcharrChannel[]>(
       `/dispatcharr/channels?search=${encodeURIComponent(search)}`,
     ),
+  sampleStreams: (p: {
+    m3u_account_id: number | null;
+    channel_group: string;
+    limit: number;
+  }) => req<{ id: number; name: string }[]>(`/dispatcharr/streams${query(p)}`),
+  m3uAccounts: () => req<M3uAccount[]>("/dispatcharr/m3u-accounts"),
+  streamGroups: () => req<string[]>("/dispatcharr/stream-groups"),
   runNow: () =>
     req<{ ok: boolean; message: string }>("/run-now", { method: "POST" }),
+  runJob: (job: "espn-refresh" | "match-cycle") =>
+    req<{ ok: boolean; message: string }>(`/jobs/${job}`, { method: "POST" }),
   routingPreview: () =>
     req<{
       ok: boolean;

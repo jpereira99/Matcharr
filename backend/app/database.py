@@ -24,6 +24,9 @@ CREATE TABLE IF NOT EXISTS league_profiles (
     espn_sport TEXT NOT NULL,
     espn_league TEXT NOT NULL,
     enabled INTEGER NOT NULL DEFAULT 1,
+    exclude_terms_json TEXT NOT NULL DEFAULT '[]',
+    m3u_account_id INTEGER,
+    channel_group TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -64,10 +67,51 @@ CREATE TABLE IF NOT EXISTS switch_log (
     to_stream_name TEXT,
     to_stream_id INTEGER,
     reason TEXT NOT NULL,
+    outcome TEXT NOT NULL DEFAULT 'switched',
     switched_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_switch_log_time ON switch_log(switched_at DESC);
+
+-- A routed game whose channel needs its after-game action (restore/clear).
+CREATE TABLE IF NOT EXISTS channel_restore (
+    team_channel_id INTEGER PRIMARY KEY REFERENCES team_channels(id) ON DELETE CASCADE,
+    espn_event_id TEXT NOT NULL,
+    stream_ids_json TEXT NOT NULL DEFAULT '[]',
+    saved_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- One-game manual stream choice; removed once the game is over.
+CREATE TABLE IF NOT EXISTS stream_overrides (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    team_channel_id INTEGER NOT NULL REFERENCES team_channels(id) ON DELETE CASCADE,
+    espn_event_id TEXT NOT NULL,
+    stream_id INTEGER NOT NULL,
+    stream_name TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(team_channel_id, espn_event_id)
+);
+"""
+
+# (table, column, DDL) for columns added after the first release.
+_COLUMN_MIGRATIONS: list[tuple[str, str, str]] = [
+    ("team_channels", "espn_team_abbr", "TEXT NOT NULL DEFAULT ''"),
+    ("league_profiles", "exclude_terms_json", "TEXT NOT NULL DEFAULT '[]'"),
+    ("league_profiles", "m3u_account_id", "INTEGER"),
+    ("league_profiles", "channel_group", "TEXT NOT NULL DEFAULT ''"),
+    ("switch_log", "outcome", "TEXT NOT NULL DEFAULT 'switched'"),
+]
+
+# Classify rows logged before switch_log.outcome existed, from their free-text reason.
+_OUTCOME_BACKFILL = """
+    UPDATE switch_log SET outcome = CASE
+        WHEN lower(reason) LIKE '%error%' OR lower(reason) LIKE '%fail%' THEN 'failed'
+        WHEN lower(reason) LIKE '%override%' THEN 'override'
+        WHEN lower(reason) LIKE '%no match%' OR lower(reason) LIKE '%outside%'
+             OR to_stream_id IS NULL THEN 'no_match'
+        ELSE 'switched'
+    END
+    WHERE outcome IS NULL OR outcome NOT IN ('switched', 'no_match', 'failed', 'override')
 """
 
 
@@ -76,13 +120,12 @@ async def init_db() -> None:
     settings.data_dir.mkdir(parents=True, exist_ok=True)
     async with aiosqlite.connect(settings.database_path) as db:
         await db.executescript(SCHEMA)
-        # Migrate: add espn_team_abbr if missing (existing DBs)
-        cur = await db.execute("PRAGMA table_info(team_channels)")
-        cols = {row[1] for row in await cur.fetchall()}
-        if "espn_team_abbr" not in cols:
-            await db.execute(
-                "ALTER TABLE team_channels ADD COLUMN espn_team_abbr TEXT NOT NULL DEFAULT ''"
-            )
+        for table, column, ddl in _COLUMN_MIGRATIONS:
+            cur = await db.execute(f"PRAGMA table_info({table})")
+            cols = {row[1] for row in await cur.fetchall()}
+            if column not in cols:
+                await db.execute(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}")
+        await db.execute(_OUTCOME_BACKFILL)
         await db.commit()
 
 

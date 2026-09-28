@@ -3,14 +3,17 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter
 
+from app import __version__
 from app.database import get_db, kv_get
-from app.models import DashboardOut, HealthOut
+from app.models import AppSettings, DashboardOut, HealthOut
 from app.services.dispatcharr import DispatcharrClient
 from app.services.matcher import compute_next_espn_refresh_at
+from app.services.overview import dashboard_overview
 from app.services.scheduler import get_scheduler_status
 from app.settings_store import load_settings
 
@@ -114,6 +117,8 @@ async def dashboard() -> DashboardOut:
         last_refresh = await kv_get(db, "last_schedule_refresh")
         last_match_cycle = await kv_get(db, "last_match_cycle_at")
 
+        overview = await dashboard_overview(db, settings)
+
     next_s, sched_running = get_scheduler_status()
     next_espn = compute_next_espn_refresh_at(
         last_schedule_refresh_iso=last_refresh,
@@ -121,10 +126,7 @@ async def dashboard() -> DashboardOut:
         next_scan_iso=next_s,
         scan_interval_minutes=settings.scan_interval_minutes,
     )
-    da_ok: bool | None = None
-    if settings.dispatcharr_url and settings.dispatcharr_token:
-        client = DispatcharrClient(settings.dispatcharr_url, settings.dispatcharr_token)
-        da_ok, _, _ = await client.test_connection()
+    da_ok, latency_ms, checked_at = await _dispatcharr_health(settings)
 
     return DashboardOut(
         dispatcharr_configured=bool(
@@ -135,8 +137,13 @@ async def dashboard() -> DashboardOut:
         upcoming_games=tracked_rows[:50],
         upcoming_games_extra_by_league=extra_leagues,
         recent_switches=logs[:15],
+        timeline=overview["timeline"],
+        tracked_summary=overview["tracked_summary"],
+        attention=overview["attention"],
         health={
             "dispatcharr_reachable": da_ok,
+            "dispatcharr_latency_ms": latency_ms,
+            "dispatcharr_checked_at": checked_at,
             "last_schedule_refresh": last_refresh,
             "next_schedule_refresh_at": next_espn,
             "scheduler_running": sched_running,
@@ -150,15 +157,30 @@ async def health() -> HealthOut:
     async with get_db() as db:
         await db.execute("SELECT 1")
         last_refresh = await kv_get(db, "last_schedule_refresh")
+        last_scan = await kv_get(db, "last_match_cycle_at")
         settings = await load_settings(db)
-    _next_s, sched_running = get_scheduler_status()
-    da_ok: bool | None = None
-    if settings.dispatcharr_url and settings.dispatcharr_token:
-        client = DispatcharrClient(settings.dispatcharr_url, settings.dispatcharr_token)
-        da_ok, _, _ = await client.test_connection()
+    next_s, sched_running = get_scheduler_status()
+    da_ok, latency_ms, checked_at = await _dispatcharr_health(settings)
     return HealthOut(
+        version=__version__,
         database=True,
         dispatcharr_reachable=da_ok,
+        dispatcharr_latency_ms=latency_ms,
+        dispatcharr_checked_at=checked_at,
         last_schedule_refresh=last_refresh,
+        last_scan_at=last_scan,
+        next_scan_at=next_s,
         scheduler_running=sched_running,
     )
+
+
+async def _dispatcharr_health(
+    settings: AppSettings,
+) -> tuple[bool | None, int | None, str | None]:
+    """(reachable, latency_ms, checked_at); reachable is None when not configured."""
+    if not settings.dispatcharr_url or not settings.dispatcharr_token:
+        return None, None, None
+    client = DispatcharrClient(settings.dispatcharr_url, settings.dispatcharr_token)
+    ok, _, detail = await client.test_connection()
+    latency = detail.get("latency_ms") if ok and isinstance(detail, dict) else None
+    return ok, latency, datetime.now(timezone.utc).isoformat()

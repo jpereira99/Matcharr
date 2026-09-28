@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from app import __version__
 from app.config import ensure_data_dir, get_settings
 from app.database import get_db, init_db
 from app.routers import (
@@ -18,6 +19,7 @@ from app.routers import (
     dashboard,
     dispatcharr_proxy,
     espn_data,
+    jobs,
     logs,
     profiles,
     routing_preview,
@@ -46,7 +48,7 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     settings_obj = get_settings()
-    app = FastAPI(title="Matcharr", lifespan=lifespan)
+    app = FastAPI(title="Matcharr", version=__version__, lifespan=lifespan)
 
     app.add_middleware(
         CORSMiddleware,
@@ -64,6 +66,7 @@ def create_app() -> FastAPI:
     app.include_router(espn_data.router, prefix="/api")
     app.include_router(dispatcharr_proxy.router, prefix="/api")
     app.include_router(run.router, prefix="/api")
+    app.include_router(jobs.router, prefix="/api")
     app.include_router(routing_preview.router, prefix="/api")
 
     static_dir = settings_obj.static_dir
@@ -80,6 +83,11 @@ def create_app() -> FastAPI:
         async def spa(full_path: str) -> FileResponse:
             if full_path.startswith("api"):
                 raise HTTPException(404)
+            # Root-level files from frontend/public (favicons, service worker).
+            root = Path(static_dir).resolve()
+            file = (root / full_path).resolve()
+            if full_path and file.is_file() and file.is_relative_to(root):
+                return FileResponse(file)
             idx = Path(static_dir) / "index.html"
             if idx.is_file():
                 return FileResponse(idx)

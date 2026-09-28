@@ -24,6 +24,14 @@
   --color-success: #22c55e;
   --color-warning: #f59e0b;
   --color-info: #3b82f6;
+  --color-override: #a78bfa;
+  --color-capture-home: #f59e0b;
+  --color-capture-home-text: #fbbf24;
+  --color-capture-away: #3b82f6;
+  --color-capture-away-text: #93c5fd;
+  --color-capture-failed-text: #fca5a5;
+  --color-text-secondary: #94a3b8;
+  --color-border-strong: #334155;
 
   --radius-sm: 0.375rem;
   --radius-md: 0.5rem;
@@ -55,6 +63,14 @@
   --color-success: #16a34a;
   --color-warning: #d97706;
   --color-info: #2563eb;
+  --color-override: #7c3aed;
+  --color-capture-home: #d97706;
+  --color-capture-home-text: #92400e;
+  --color-capture-away: #2563eb;
+  --color-capture-away-text: #1e40af;
+  --color-capture-failed-text: #b91c1c;
+  --color-text-secondary: #475569;
+  --color-border-strong: #cbd5e1;
 
   --shadow-card:
     0 1px 3px 0 rgb(15 23 42 / 0.06), 0 1px 2px -1px rgb(15 23 42 / 0.06);

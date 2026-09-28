@@ -1,4 +1,5 @@
-import { LeagueBadge } from "@/components/LeagueBadge";
+import { ScheduleTimeline } from "@/components/ScheduleTimeline";
+import { StackedBar } from "@/components/StatSummary";
 import { TeamLogo } from "@/components/TeamLogo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -6,230 +7,239 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusDot } from "@/components/ui/status-dot";
 import { api } from "@/lib/api";
-import { fmtDateTime, fmtDateTimeSec } from "@/lib/date";
-import type { LeagueProfile, TeamChannel } from "@/lib/types";
+import { fmtAgo, fmtTime, fmtWeekdayTime, isToday, parseUtc } from "@/lib/date";
+import { attentionIssue, OUTCOMES } from "@/lib/outcomes";
+import { channelNumber, useDispatcharrChannels } from "@/lib/teams";
+import type { Dashboard, TimelineRow } from "@/lib/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Activity,
+  ArrowLeftRight,
   ArrowRight,
-  ChevronDown,
-  ChevronRight,
   Clock,
   Radio,
-  RefreshCw,
   Route,
+  TriangleAlert,
+  Users,
   Zap,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 
-const previewStatusLabel: Record<string, string> = {
-  stream_found: "Stream matched",
-  no_stream_match: "No stream match",
-  no_active_game: "No game in cache",
-  outside_window: "Outside window",
-  pattern_error: "Pattern error",
-  dispatcharr_error: "Dispatcharr error",
-};
-
-const previewStatusVariant: Record<
+const previewStatus: Record<
   string,
-  "success" | "warning" | "danger" | "muted"
+  { label: string; variant: "success" | "warning" | "danger" | "muted" }
 > = {
-  stream_found: "success",
-  no_stream_match: "warning",
-  no_active_game: "muted",
-  outside_window: "muted",
-  pattern_error: "danger",
-  dispatcharr_error: "danger",
+  stream_found: { label: "Stream matched", variant: "success" },
+  no_stream_match: { label: "No stream match", variant: "warning" },
+  no_active_game: { label: "No game in cache", variant: "muted" },
+  outside_window: { label: "Outside window", variant: "muted" },
+  pattern_error: { label: "Pattern error", variant: "danger" },
+  dispatcharr_error: { label: "Dispatcharr error", variant: "danger" },
 };
 
-/** ESPN `status.type.state` from scoreboard API */
-const espnScheduleStateLabel: Record<string, string> = {
-  pre: "Scheduled",
-  in: "Live",
-  post: "Ended",
-  cancelled: "Canceled",
-  canceled: "Canceled",
-  postponed: "Postponed",
-  delayed: "Delayed",
-  suspended: "Suspended",
-};
-
-function formatScheduleGameStatus(status: string | undefined): string {
-  if (status == null || status === "") return "—";
-  return espnScheduleStateLabel[status] ?? status;
+function shortTime(iso: string | null | undefined) {
+  if (!iso) return "—";
+  return isToday(iso) ? fmtTime(iso) : fmtWeekdayTime(iso);
 }
 
-type Lookups = {
-  tcById: Map<number, TeamChannel>;
-  profileById: Map<number, LeagueProfile>;
-};
-
-function buildLookups(
-  channels: TeamChannel[] | undefined,
-  profiles: LeagueProfile[] | undefined,
-): Lookups {
-  const tcById = new Map<number, TeamChannel>();
-  for (const tc of channels ?? []) tcById.set(tc.id, tc);
-  const profileById = new Map<number, LeagueProfile>();
-  for (const p of profiles ?? []) profileById.set(p.id, p);
-  return { tcById, profileById };
+/** Channels with the soonest unfinished game first. */
+function sortRows(rows: TimelineRow[], now: number) {
+  const nextStart = (r: TimelineRow) => {
+    const g = r.games.find(
+      (x) => x.live || Date.parse(x.start) + x.duration_min * 60_000 > now,
+    );
+    return g ? Date.parse(g.start) : Infinity;
+  };
+  return [...rows].sort((a, b) => nextStart(a) - nextStart(b));
 }
 
-function TeamLogoFromChannel({
-  tc,
-  profile,
-  size = 28,
+function CardHeader({
+  icon,
+  title,
+  right,
 }: {
-  tc: TeamChannel | undefined;
-  profile: LeagueProfile | undefined;
-  size?: number;
+  icon: ReactNode;
+  title: string;
+  right?: ReactNode;
 }) {
-  if (!tc || !profile) return null;
   return (
-    <TeamLogo
-      league={profile.espn_league}
-      abbreviation={tc.espn_team_abbr}
-      espnTeamId={tc.espn_team_id}
-      teamName={tc.team_name}
-      size={size}
-    />
-  );
-}
-
-/** Logos for schedule rows: uses ESPN team ids from the cache (works for every team, not only mapped channels). */
-function TeamLogoFromSchedule({
-  profile,
-  espnTeamId,
-  teamName,
-  size = 20,
-}: {
-  profile: LeagueProfile | undefined;
-  espnTeamId: string;
-  teamName: string;
-  size?: number;
-}) {
-  if (!profile || !espnTeamId.trim()) return null;
-  return (
-    <TeamLogo
-      league={profile.espn_league}
-      abbreviation=""
-      espnTeamId={espnTeamId}
-      teamName={teamName}
-      size={size}
-    />
-  );
-}
-
-function CachedGameCard({
-  g,
-  highlighted,
-  lookups,
-}: {
-  g: Record<string, unknown>;
-  highlighted: boolean;
-  lookups: Lookups;
-}) {
-  const tracked = (g.tracked_team_names as string[] | undefined) ?? [];
-  const lpId = g.league_profile_id as number | undefined;
-  const profile = lpId != null ? lookups.profileById.get(lpId) : undefined;
-  const homeId = String(g.home_team_id ?? "");
-  const awayId = String(g.away_team_id ?? "");
-  const awayName = String(g.away_team ?? "");
-  const homeName = String(g.home_team ?? "");
-
-  const nameTracked = (name: string) =>
-    highlighted &&
-    tracked.some((t) => t.trim().toLowerCase() === name.trim().toLowerCase());
-  const awayTracked = nameTracked(awayName);
-  const homeTracked = nameTracked(homeName);
-
-  return (
-    <div className="flex items-center gap-3 rounded-(--radius-md) border border-(--color-border) bg-(--color-surface-raised)/50 px-4 py-3 transition-colors">
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-2">
-            <TeamLogoFromSchedule
-              profile={profile}
-              espnTeamId={awayId}
-              teamName={awayName}
-              size={20}
-            />
-            <span className="truncate text-sm font-medium text-(--color-foreground)">
-              <span
-                className={awayTracked ? "text-(--color-accent)" : undefined}
-              >
-                {awayName}
-              </span>
-              <span> @ </span>
-              <span
-                className={homeTracked ? "text-(--color-accent)" : undefined}
-              >
-                {homeName}
-              </span>
-            </span>
-            <TeamLogoFromSchedule
-              profile={profile}
-              espnTeamId={homeId}
-              teamName={homeName}
-              size={20}
-            />
-          </div>
-          {profile ? (
-            <LeagueBadge
-              league={profile.espn_league}
-              label={String(g.league ?? "")}
-              className="shrink-0"
-            />
-          ) : (
-            <Badge variant="muted">{String(g.league ?? "")}</Badge>
-          )}
-        </div>
-        <div className="mt-1 flex items-center gap-3 text-xs text-(--color-muted)">
-          <span>{fmtDateTime(g.game_time as string | undefined) ?? "—"}</span>
-          <span className="text-(--color-muted)">|</span>
-          <span>
-            {formatScheduleGameStatus(g.status as string | undefined)}
-          </span>
-        </div>
-      </div>
+    <div className="flex items-center gap-2.5 border-b border-(--color-border) px-5 py-4">
+      {icon}
+      <h2 className="font-heading text-base font-extrabold tracking-tight">
+        {title}
+      </h2>
+      <div className="ml-auto">{right}</div>
     </div>
   );
 }
 
-function DashboardSkeleton() {
+function StatusStrip({ d }: { d: Dashboard }) {
+  const reachable = d.health.dispatcharr_reachable;
+  const t = d.tracked_summary;
   return (
-    <div className="space-y-8">
-      <div className="flex justify-between">
-        <div>
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="mt-2 h-4 w-72" />
+    <div
+      className="grid gap-4"
+      style={{
+        gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 240px), 1fr))",
+      }}
+    >
+      <Card>
+        <div className="flex items-center gap-2 text-(--color-muted)">
+          <Radio className="h-4 w-4" />
+          <span className="text-xs font-semibold tracking-wide uppercase">
+            Dispatcharr
+          </span>
+          <StatusDot
+            status={
+              !d.dispatcharr_configured || reachable === false
+                ? "offline"
+                : reachable
+                  ? "online"
+                  : "warning"
+            }
+            className="ml-auto"
+          />
         </div>
-        <div className="flex gap-2">
-          <Skeleton className="h-9 w-36" />
-          <Skeleton className="h-9 w-36" />
+        <div className="mt-3 text-xl font-semibold">
+          {!d.dispatcharr_configured ? (
+            <span className="text-(--color-danger)">Not configured</span>
+          ) : reachable ? (
+            <span className="text-(--color-success)">Connected</span>
+          ) : reachable === false ? (
+            <span className="text-(--color-warning)">Unreachable</span>
+          ) : (
+            <span className="text-(--color-muted)">Unknown</span>
+          )}
         </div>
-      </div>
-      <div className="grid gap-4 md:grid-cols-3">
-        {[1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-28" />
-        ))}
-      </div>
-      <Skeleton className="h-64" />
+        <p className="mt-2 text-xs text-(--color-muted)">
+          {d.dispatcharr_configured ? (
+            <>
+              {d.health.dispatcharr_latency_ms != null &&
+                `${d.health.dispatcharr_latency_ms} ms · `}
+              checked {fmtAgo(d.health.dispatcharr_checked_at)}.{" "}
+            </>
+          ) : (
+            "Set the URL and token in "
+          )}
+          <Link
+            to="/settings"
+            className="text-(--color-accent) hover:underline"
+          >
+            Settings
+          </Link>
+        </p>
+      </Card>
+
+      <Card>
+        <div className="flex items-center gap-2 text-(--color-muted)">
+          <Users className="h-4 w-4" />
+          <span className="text-xs font-semibold tracking-wide uppercase">
+            Tracked Teams
+          </span>
+        </div>
+        <div className="mt-3 flex items-baseline gap-2.5">
+          <span className="text-3xl font-bold tabular-nums">
+            {d.tracked_teams}
+          </span>
+          <span className="text-xs text-(--color-muted)">
+            {d.tracked_teams === 0 ? (
+              <>
+                Add teams in{" "}
+                <Link
+                  to="/teams"
+                  className="text-(--color-accent) hover:underline"
+                >
+                  Team Channels
+                </Link>
+              </>
+            ) : (
+              <>
+                <span className="text-(--color-success)">{t.ready} ready</span>
+                {" · "}
+                <span className="text-(--color-warning)">
+                  {t.attention} need{t.attention === 1 ? "s" : ""} a look
+                </span>
+                {t.override > 0 && (
+                  <>
+                    {" · "}
+                    <span className="text-(--color-override)">
+                      {t.override} overridden
+                    </span>
+                  </>
+                )}
+              </>
+            )}
+          </span>
+        </div>
+        {t.total > 0 && (
+          <div className="mt-2">
+            <StackedBar
+              segments={[
+                { count: t.ready, colorClass: "bg-(--color-success)" },
+                { count: t.attention, colorClass: "bg-(--color-warning)" },
+                { count: t.override, colorClass: "bg-(--color-override)" },
+                { count: t.waiting, colorClass: "bg-(--color-border-strong)" },
+              ]}
+            />
+          </div>
+        )}
+      </Card>
+
+      <Card>
+        <div className="flex items-center gap-2 text-(--color-muted)">
+          <Clock className="h-4 w-4" />
+          <span className="text-xs font-semibold tracking-wide uppercase">
+            Scheduler
+          </span>
+          <StatusDot
+            status={d.health.scheduler_running ? "online" : "warning"}
+            className="ml-auto"
+          />
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-(--color-muted)">
+          <div>
+            <div className="text-[10px] font-semibold tracking-wide uppercase">
+              Stream matching
+            </div>
+            <div className="mt-0.5">
+              Next{" "}
+              <span className="text-(--color-foreground)">
+                {shortTime(d.next_scan_at)}
+              </span>
+            </div>
+            <div>Last {shortTime(d.health.last_scan_at)}</div>
+          </div>
+          <div>
+            <div className="text-[10px] font-semibold tracking-wide uppercase">
+              ESPN cache
+            </div>
+            <div className="mt-0.5">
+              Next{" "}
+              <span className="text-(--color-foreground)">
+                {shortTime(d.health.next_schedule_refresh_at)}
+              </span>
+            </div>
+            <div>Last {shortTime(d.health.last_schedule_refresh)}</div>
+          </div>
+        </div>
+      </Card>
     </div>
   );
 }
 
 export function DashboardPage() {
   const qc = useQueryClient();
-  const [expandedLeagues, setExpandedLeagues] = useState<Set<number>>(
-    () => new Set(),
-  );
-  const [showPreview, setShowPreview] = useState(false);
-
-  const q = useQuery({ queryKey: ["dashboard"], queryFn: api.dashboard });
-  const channelsQ = useQuery({
+  const q = useQuery({
+    queryKey: ["dashboard"],
+    queryFn: api.dashboard,
+    refetchInterval: 60_000,
+  });
+  const settingsQ = useQuery({
+    queryKey: ["settings"],
+    queryFn: api.getSettings,
+    staleTime: Infinity,
+  });
+  const teamsQ = useQuery({
     queryKey: ["team-channels"],
     queryFn: api.listTeamChannels,
   });
@@ -237,65 +247,74 @@ export function DashboardPage() {
     queryKey: ["profiles"],
     queryFn: api.listProfiles,
   });
+  const channelsQ = useDispatcharrChannels();
   const preview = useMutation({ mutationFn: api.routingPreview });
   const run = useMutation({
     mutationFn: api.runNow,
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["dashboard"] });
-      void qc.invalidateQueries({ queryKey: ["upcoming-stream-matches"] });
       preview.reset();
     },
   });
-  const streamMatches = useQuery({
-    queryKey: ["upcoming-stream-matches"],
-    queryFn: api.upcomingStreamMatches,
-    retry: false,
-  });
 
-  const lookups = useMemo(
-    () => buildLookups(channelsQ.data, profilesQ.data),
-    [channelsQ.data, profilesQ.data],
+  const now = q.dataUpdatedAt || Date.now();
+  const rows = useMemo(
+    () => sortRows(q.data?.timeline ?? [], now),
+    [q.data, now],
   );
+  const teamById = useMemo(
+    () => new Map((teamsQ.data ?? []).map((t) => [t.id, t])),
+    [teamsQ.data],
+  );
+  const leagueByProfile = useMemo(
+    () => new Map((profilesQ.data ?? []).map((p) => [p.id, p.espn_league])),
+    [profilesQ.data],
+  );
+  const channelNum = (id: number) =>
+    channelNumber(channelsQ.data?.find((c) => c.id === id)) || String(id);
 
-  if (q.isLoading) return <DashboardSkeleton />;
-  if (q.isError)
+  if (q.isLoading)
+    return (
+      <div className="flex flex-col gap-6">
+        <Skeleton className="h-8 w-48" />
+        <div className="grid gap-4 md:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-28" />
+          ))}
+        </div>
+        <Skeleton className="h-80" />
+      </div>
+    );
+  if (q.isError || !q.data)
     return (
       <div className="text-(--color-danger)">Failed to load dashboard</div>
     );
 
-  const d = q.data!;
-  const reachable = d.health?.dispatcharr_reachable as
-    | boolean
-    | null
-    | undefined;
+  const d = q.data;
+  const latest = d.recent_switches.slice(0, 4);
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+    <div className="flex flex-col gap-6">
+      <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-heading text-2xl font-extrabold tracking-tight">
             Dashboard
           </h1>
           <p className="mt-1 text-sm text-(--color-muted)">
-            Live routing status, upcoming games, and recent stream switches.
+            Live routing status and what&apos;s coming up.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex gap-2">
           <Button
-            type="button"
             variant="ghost"
             size="sm"
-            onClick={() => {
-              preview.mutate();
-              setShowPreview(true);
-            }}
+            onClick={() => preview.mutate()}
             disabled={preview.isPending}
           >
             <Route className="h-3.5 w-3.5" />
-            {preview.isPending ? "Checking..." : "Check Routing"}
+            {preview.isPending ? "Previewing..." : "Preview Routing"}
           </Button>
           <Button
-            type="button"
             size="sm"
             onClick={() => run.mutate()}
             disabled={run.isPending}
@@ -306,7 +325,6 @@ export function DashboardPage() {
         </div>
       </header>
 
-      {/* Run result banner */}
       {run.isSuccess && run.data && (
         <div
           className={`rounded-(--radius-md) border px-4 py-3 text-sm ${
@@ -320,166 +338,21 @@ export function DashboardPage() {
       )}
       {run.isError && (
         <div className="rounded-(--radius-md) border border-(--color-danger)/30 bg-(--color-danger)/10 px-4 py-3 text-sm text-(--color-danger)">
-          {(run.error as Error)?.message ?? "Run failed"}
+          {run.error.message}
         </div>
       )}
 
-      {/* Status strip */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="relative overflow-hidden">
-          <div className="flex items-center gap-2 text-(--color-muted)">
-            <Radio className="h-4 w-4" />
-            <span className="text-xs font-semibold tracking-wide uppercase">
-              Dispatcharr
-            </span>
-            <StatusDot
-              status={
-                !d.dispatcharr_configured
-                  ? "offline"
-                  : reachable === true
-                    ? "online"
-                    : reachable === false
-                      ? "offline"
-                      : "warning"
-              }
-              className="ml-auto"
-            />
-          </div>
-          <div className="mt-3 text-xl font-semibold tabular-nums">
-            {!d.dispatcharr_configured ? (
-              <span className="text-(--color-danger)">Not configured</span>
-            ) : reachable === true ? (
-              <span className="text-(--color-success)">Connected</span>
-            ) : reachable === false ? (
-              <span className="text-(--color-warning)">Unreachable</span>
-            ) : (
-              <span className="text-(--color-muted)">Unknown</span>
-            )}
-          </div>
-          <p className="mt-2 text-xs text-(--color-muted)">
-            {d.dispatcharr_configured ? (
-              <>
-                API{" "}
-                {reachable === true
-                  ? "responded OK"
-                  : reachable === false
-                    ? "did not respond"
-                    : "not checked"}
-                .{" "}
-                <Link
-                  to="/settings"
-                  className="text-(--color-accent) hover:underline"
-                >
-                  Settings
-                </Link>
-              </>
-            ) : (
-              <>
-                Set URL + token in{" "}
-                <Link
-                  to="/settings"
-                  className="text-(--color-accent) hover:underline"
-                >
-                  Settings
-                </Link>
-                .
-              </>
-            )}
-          </p>
-        </Card>
-
-        <Card>
-          <div className="flex items-center gap-2 text-(--color-muted)">
-            <Activity className="h-4 w-4" />
-            <span className="text-xs font-semibold tracking-wide uppercase">
-              Tracked Teams
-            </span>
-          </div>
-          <div className="mt-3 text-3xl font-bold tabular-nums">
-            {d.tracked_teams}
-          </div>
-          <p className="mt-2 text-xs text-(--color-muted)">
-            {d.tracked_teams === 0 ? (
-              <>
-                Add teams in{" "}
-                <Link
-                  to="/teams"
-                  className="text-(--color-accent) hover:underline"
-                >
-                  Team Channels
-                </Link>
-                .
-              </>
-            ) : (
-              "Enabled team channel mappings."
-            )}
-          </p>
-        </Card>
-
-        <Card>
-          <div className="flex items-center gap-2 text-(--color-muted)">
-            <Clock className="h-4 w-4" />
-            <span className="text-xs font-semibold tracking-wide uppercase">
-              Scheduler
-            </span>
-            <StatusDot
-              status={d.health?.scheduler_running ? "online" : "warning"}
-              className="ml-auto"
-            />
-          </div>
-          <div className="mt-3 grid grid-cols-1 gap-4 text-xs text-(--color-muted) sm:grid-cols-2 sm:gap-x-6">
-            <div className="min-w-0 space-y-0.5">
-              <div className="text-[10px] font-semibold tracking-wide uppercase">
-                Stream Matching
-              </div>
-              <div>Next: {fmtDateTimeSec(d.next_scan_at) ?? "—"}</div>
-              <div>
-                Last:{" "}
-                {fmtDateTimeSec(d.health?.last_scan_at as string | undefined) ??
-                  "—"}
-              </div>
-            </div>
-            <div className="min-w-0 space-y-0.5">
-              <div className="text-[10px] font-semibold tracking-wide uppercase">
-                ESPN Cache
-              </div>
-              <div>
-                Next:{" "}
-                {fmtDateTimeSec(
-                  d.health?.next_schedule_refresh_at as string | undefined,
-                ) ?? "—"}
-              </div>
-              <div>
-                Last:{" "}
-                {fmtDateTimeSec(
-                  d.health?.last_schedule_refresh as string | undefined,
-                ) ?? "—"}
-              </div>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Routing Preview (expandable) */}
-      {showPreview && (preview.data != null || preview.isError) && (
+      {(preview.data || preview.isError) && (
         <Card>
           <div className="flex items-center justify-between">
             <CardTitle>Routing Preview</CardTitle>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setShowPreview(false);
-                preview.reset();
-              }}
-            >
+            <Button variant="ghost" size="sm" onClick={() => preview.reset()}>
               Dismiss
             </Button>
           </div>
           {preview.isError && (
             <p className="mt-2 text-sm text-(--color-danger)">
-              {(preview.error as Error)?.message ?? "Preview failed"}
+              {preview.error.message}
             </p>
           )}
           {preview.data && (
@@ -488,47 +361,33 @@ export function DashboardPage() {
                 {preview.data.message}
               </p>
               <div className="mt-4 space-y-2">
-                {preview.data.items?.map((row) => {
-                  const tc = lookups.tcById.get(row.team_channel_id);
-                  const profile = lookups.profileById.get(
-                    row.league_profile_id,
-                  );
+                {preview.data.items.map((row) => {
+                  const st = previewStatus[row.status];
                   return (
                     <div
                       key={row.team_channel_id}
-                      className="flex items-center gap-3 rounded-(--radius-md) border border-(--color-border) bg-(--color-surface-raised)/50 px-4 py-2.5"
+                      className="rounded-(--radius-md) border border-(--color-border) bg-(--color-surface-raised)/50 px-4 py-2.5"
                     >
-                      <TeamLogoFromChannel
-                        tc={tc}
-                        profile={profile}
-                        size={28}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-sm font-medium">
-                            {row.team_name}
-                          </span>
-                          <Badge
-                            variant={
-                              previewStatusVariant[row.status] ?? "muted"
-                            }
-                          >
-                            {previewStatusLabel[row.status] ?? row.status}
-                          </Badge>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium">
+                          {row.team_name}
+                        </span>
+                        <Badge variant={st?.variant ?? "muted"}>
+                          {st?.label ?? row.status}
+                        </Badge>
+                      </div>
+                      {row.next_game && (
+                        <div className="mt-1 text-xs text-(--color-muted)">
+                          {row.next_game}
                         </div>
-                        {row.next_game && (
-                          <div className="mt-1 text-xs text-(--color-muted)">
-                            {row.next_game}
-                          </div>
-                        )}
-                        {row.matched_stream_name && (
-                          <div className="mt-1 font-mono text-xs text-(--color-success)">
-                            {row.matched_stream_name}
-                          </div>
-                        )}
-                        <div className="mt-0.5 text-xs text-(--color-muted)">
-                          {row.reason}
+                      )}
+                      {row.matched_stream_name && (
+                        <div className="mt-1 font-mono text-xs text-(--color-success)">
+                          {row.matched_stream_name}
                         </div>
+                      )}
+                      <div className="mt-0.5 text-xs text-(--color-muted)">
+                        {row.reason}
                       </div>
                     </div>
                   );
@@ -539,272 +398,129 @@ export function DashboardPage() {
         </Card>
       )}
 
-      {/* Main 2-column area */}
-      <div className="grid gap-6 lg:grid-cols-[3fr_2fr]">
-        {/* Left: Upcoming Streams */}
-        <Card>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0">
-              <CardTitle>Upcoming Streams</CardTitle>
-              <p className="mt-1 text-xs text-(--color-muted)">
-                Check the next game for your tracked teams and stream matching
-                status.
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="shrink-0"
-              onClick={() => void streamMatches.refetch()}
-              disabled={streamMatches.isFetching}
+      <StatusStrip d={d} />
+
+      <ScheduleTimeline
+        rows={rows}
+        lookaheadDays={settingsQ.data?.schedule_lookahead_days ?? 3}
+        preGameMinutes={settingsQ.data?.pre_game_minutes ?? 30}
+        channelNumber={channelNum}
+        now={now}
+      />
+
+      <div
+        className="grid items-start gap-4"
+        style={{
+          gridTemplateColumns:
+            "repeat(auto-fit, minmax(min(100%, 380px), 1fr))",
+        }}
+      >
+        <Card className="overflow-hidden p-0">
+          <CardHeader
+            icon={<TriangleAlert className="h-4 w-4 text-(--color-warning)" />}
+            title="Needs a look"
+            right={
+              <Badge variant={d.attention.length ? "warning" : "muted"}>
+                {d.attention.length}
+              </Badge>
+            }
+          />
+          {d.attention.length === 0 && (
+            <p className="px-5 py-6 text-sm text-(--color-muted)">
+              Every tracked team&apos;s next game has one clear stream.
+            </p>
+          )}
+          {d.attention.map((a) => (
+            <div
+              key={a.team_channel_id}
+              className="flex gap-3 border-b border-(--color-border) px-5 py-3.5 last:border-b-0"
             >
-              <RefreshCw
-                className={`h-3.5 w-3.5 ${streamMatches.isFetching ? "animate-spin" : ""}`}
+              <TeamLogo
+                league={a.espn_league}
+                abbreviation={a.espn_team_abbr}
+                espnTeamId={a.espn_team_id}
+                teamName={a.team_name}
+                size={32}
               />
-              Refresh
-            </Button>
-          </div>
-
-          {streamMatches.isError && (
-            <p className="mt-3 text-sm text-(--color-danger)">
-              {(streamMatches.error as Error)?.message ??
-                "Could not load stream matches"}
-            </p>
-          )}
-          {streamMatches.data && !streamMatches.data.ok && (
-            <p className="mt-3 text-sm text-(--color-warning)">
-              {streamMatches.data.message}
-            </p>
-          )}
-
-          {streamMatches.data?.ok && (
-            <div className="mt-4 space-y-2">
-              {streamMatches.data.items.map((row) => {
-                const tc = lookups.tcById.get(row.team_channel_id);
-                const profile = lookups.profileById.get(row.league_profile_id);
-                return (
-                  <div
-                    key={row.team_channel_id}
-                    className="flex items-start gap-3 rounded-(--radius-md) border border-(--color-border) bg-(--color-surface-raised)/30 px-4 py-3"
-                  >
-                    <TeamLogoFromChannel tc={tc} profile={profile} size={32} />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-medium">
-                          {row.team_name}
-                        </span>
-                        {row.status === "no_upcoming_game" ||
-                        row.status === "pattern_error" ||
-                        row.status === "dispatcharr_error" ? (
-                          <Badge
-                            variant={
-                              previewStatusVariant[row.status] ?? "muted"
-                            }
-                          >
-                            {previewStatusLabel[row.status] ?? row.status}
-                          </Badge>
-                        ) : row.in_routing_window ? (
-                          <Badge variant="success">In Window</Badge>
-                        ) : (
-                          <Badge variant="muted">Not Yet</Badge>
-                        )}
-                      </div>
-                      {row.next_game && (
-                        <div className="mt-1 text-xs text-(--color-muted)">
-                          {row.next_game}
-                        </div>
-                      )}
-                      <div className="mt-1 flex items-center gap-3 text-xs text-(--color-muted)">
-                        <span>{fmtDateTime(row.game_time) ?? "No game"}</span>
-                        {row.streams_in_list > 0 && (
-                          <>
-                            <span className="text-(--color-muted)">|</span>
-                            <span className="tabular-nums">
-                              {row.matched_stream_name
-                                ? `Matched from ${row.streams_in_list} potential stream${row.streams_in_list !== 1 ? "s" : ""}`
-                                : `${row.streams_in_list} potential stream${row.streams_in_list !== 1 ? "s" : ""}`}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                      {row.matched_stream_name ? (
-                        <div className="mt-1.5 font-mono text-xs text-(--color-success)">
-                          {row.matched_stream_name}
-                        </div>
-                      ) : (
-                        row.status !== "no_upcoming_game" && (
-                          <div className="mt-1.5 font-mono text-xs text-(--color-danger)">
-                            {row.status === "no_stream_match"
-                              ? "No matches found"
-                              : row.status === "pattern_error"
-                                ? "Pattern error"
-                                : row.status === "dispatcharr_error"
-                                  ? "Dispatcharr error"
-                                  : "—"}
-                          </div>
-                        )
-                      )}
-                    </div>
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <div className="text-sm font-semibold">{a.team_name}</div>
+                {a.game && (
+                  <div className="text-xs text-(--color-muted)">
+                    {fmtWeekdayTime(a.game.start)} {a.game.is_home ? "vs" : "@"}{" "}
+                    {a.game.opponent}
+                    {a.game.live && " · live"}
                   </div>
-                );
-              })}
-              {!streamMatches.data.items.length && (
-                <p className="py-6 text-center text-sm text-(--color-muted)">
-                  No team mappings to show.
-                </p>
-              )}
+                )}
+                <div className="text-xs">
+                  {attentionIssue(a.game, a.failed_reason)}
+                </div>
+              </div>
+              <Link
+                to={`/teams/${a.team_channel_id}`}
+                className="inline-flex flex-none items-center gap-1 self-center rounded-(--radius-sm) border border-(--color-border) px-2.5 py-1.5 text-xs font-medium text-(--color-foreground) transition-colors duration-150 hover:border-(--color-muted)"
+              >
+                Review
+                <ArrowRight className="h-3 w-3" />
+              </Link>
             </div>
-          )}
-
-          {!streamMatches.data && streamMatches.isLoading && (
-            <div className="mt-4 space-y-2">
-              {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-16" />
-              ))}
-            </div>
-          )}
+          ))}
         </Card>
 
-        {/* Right: Game Schedule */}
-        <Card>
-          <CardTitle>Game Schedule</CardTitle>
-          <p className="mt-1 text-xs text-(--color-muted)">
-            Upcoming games from the ESPN schedule (cached every 6 hours).
-          </p>
-          <div className="mt-4 space-y-2">
-            {d.upcoming_games?.length ? (
-              d.upcoming_games.map((g, i) => (
-                <CachedGameCard
-                  key={i}
-                  g={g as Record<string, unknown>}
-                  highlighted
-                  lookups={lookups}
-                />
-              ))
-            ) : d.tracked_teams > 0 ? (
-              <p className="py-6 text-center text-sm text-(--color-muted)">
-                No upcoming games in cache — run a match or wait for refresh.
-              </p>
-            ) : (
-              <p className="py-6 text-center text-sm text-(--color-muted)">
-                No schedule data yet — add profiles and teams first.
-              </p>
-            )}
-
-            {(d.upcoming_games_extra_by_league ?? []).map((section) => {
-              const id = section.league_profile_id;
-              const n = section.games?.length ?? 0;
-              if (n === 0) return null;
-              const open = expandedLeagues.has(id);
-              const sectionProfile = lookups.profileById.get(id);
-              return (
-                <div key={id} className="space-y-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setExpandedLeagues((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(id)) next.delete(id);
-                        else next.add(id);
-                        return next;
-                      })
-                    }
-                    className="flex w-full cursor-pointer items-center gap-2 rounded-(--radius-md) border border-(--color-border) bg-(--color-surface-raised)/50 px-3 py-2 text-left text-xs font-medium text-(--color-muted) transition-colors hover:text-(--color-foreground)"
-                  >
-                    {open ? (
-                      <ChevronDown className="h-3.5 w-3.5 shrink-0 text-(--color-accent)" />
-                    ) : (
-                      <ChevronRight className="h-3.5 w-3.5 shrink-0" />
-                    )}
-                    {sectionProfile && (
-                      <LeagueBadge
-                        league={sectionProfile.espn_league}
-                        size={16}
-                      />
-                    )}
-                    <span>
-                      {open ? "Hide" : "Show"} {n} more in {section.league}
-                    </span>
-                  </button>
-                  {open &&
-                    section.games.map((g, j) => (
-                      <CachedGameCard
-                        key={`${id}-${j}`}
-                        g={g as Record<string, unknown>}
-                        highlighted={false}
-                        lookups={lookups}
-                      />
-                    ))}
+        <Card className="overflow-hidden p-0">
+          <CardHeader
+            icon={<ArrowLeftRight className="h-4 w-4 text-(--color-accent)" />}
+            title="Latest switches"
+            right={
+              <Link
+                to="/activity"
+                className="text-xs text-(--color-accent) hover:text-(--color-accent-hover)"
+              >
+                View all
+              </Link>
+            }
+          />
+          {latest.length === 0 && (
+            <p className="px-5 py-6 text-sm text-(--color-muted)">
+              No switch events yet.
+            </p>
+          )}
+          {latest.map((s) => {
+            const tc = teamById.get(s.team_channel_id);
+            const outcome = OUTCOMES[s.outcome] ?? OUTCOMES.switched;
+            const at = parseUtc(s.switched_at);
+            return (
+              <div
+                key={s.id}
+                className="flex items-center gap-3 border-b border-(--color-border) px-5 py-3 last:border-b-0"
+              >
+                <span className="w-14 flex-none font-mono text-[11.5px] text-(--color-muted)">
+                  {isToday(at) ? fmtTime(at) : fmtWeekdayTime(at.toISOString())}
+                </span>
+                {tc && (
+                  <TeamLogo
+                    league={leagueByProfile.get(tc.league_profile_id) ?? ""}
+                    abbreviation={tc.espn_team_abbr}
+                    espnTeamId={tc.espn_team_id}
+                    teamName={tc.team_name}
+                    size={22}
+                  />
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[13px] font-semibold">
+                    {s.team_name ?? "Removed team"}
+                  </div>
+                  <div className="truncate font-mono text-[11px] text-(--color-text-secondary)">
+                    → {s.to_stream_name ?? "—"}
+                  </div>
                 </div>
-              );
-            })}
-          </div>
+                <Badge variant={outcome.variant} className="flex-none">
+                  {outcome.label}
+                </Badge>
+              </div>
+            );
+          })}
         </Card>
       </div>
-
-      {/* Recent Switches — Timeline */}
-      <Card>
-        <CardTitle>Recent Switches</CardTitle>
-        {d.recent_switches?.length ? (
-          <div className="relative mt-4 ml-3 border-l-2 border-(--color-border) pl-6">
-            {d.recent_switches.map((s, i) => {
-              const tcId = s.team_channel_id as number | undefined;
-              const tc = tcId != null ? lookups.tcById.get(tcId) : undefined;
-              const profile = tc
-                ? lookups.profileById.get(tc.league_profile_id)
-                : undefined;
-              const fromName = String(s.from_stream_name ?? "Empty Stream");
-              const toName = String(s.to_stream_name ?? "Empty Stream");
-              return (
-                <div key={i} className="relative pb-3.5 last:pb-0">
-                  <span className="absolute top-1 -left-[33px] flex h-4 w-4 items-center justify-center rounded-full border-2 border-(--color-border) bg-(--color-surface)">
-                    <span className="h-1.5 w-1.5 rounded-full bg-(--color-accent)" />
-                  </span>
-                  <div className="flex min-w-0 items-start gap-2">
-                    <TeamLogoFromChannel tc={tc} profile={profile} size={18} />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                        <span className="text-[11px] text-(--color-muted) tabular-nums">
-                          {String(s.switched_at)}
-                        </span>
-                        <span className="text-xs font-medium">
-                          {String(s.team_name ?? "?")}
-                        </span>
-                      </div>
-                      <div className="mt-0.5 flex min-w-0 items-center gap-1 font-mono text-[11px] leading-tight">
-                        <span
-                          className="max-w-[300px] min-w-0 truncate text-(--color-muted)"
-                          title={fromName}
-                        >
-                          {fromName}
-                        </span>
-                        <ArrowRight className="h-3 w-3 shrink-0 text-(--color-accent)" />
-                        <span
-                          className="max-w-[300px] min-w-0 truncate text-(--color-foreground)"
-                          title={toName}
-                        >
-                          {toName}
-                        </span>
-                      </div>
-                      <div
-                        className="mt-0.5 text-[11px] text-(--color-muted)"
-                        title={String(s.reason)}
-                      >
-                        {String(s.reason)}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="mt-4 py-6 text-center text-sm text-(--color-muted)">
-            No switch events yet.
-          </p>
-        )}
-      </Card>
     </div>
   );
 }

@@ -9,6 +9,7 @@ type DialogProps = {
   children: ReactNode;
   className?: string;
   variant?: "center" | "panel";
+  showClose?: boolean;
 };
 
 export function Dialog({
@@ -18,6 +19,7 @@ export function Dialog({
   children,
   className,
   variant = "center",
+  showClose = true,
 }: DialogProps) {
   useEffect(() => {
     if (!open) return;
@@ -56,16 +58,18 @@ export function Dialog({
           <h2 className="font-heading text-lg font-extrabold tracking-tight">
             {title}
           </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-(--radius-sm) p-1.5 text-(--color-muted) transition-colors hover:bg-(--color-surface-raised) hover:text-(--color-foreground)"
-            aria-label="Close"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          {showClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-(--radius-sm) p-1.5 text-(--color-muted) transition-colors hover:bg-(--color-surface-raised) hover:text-(--color-foreground)"
+              aria-label="Close"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
-        <div className="mt-4">{children}</div>
+        <div className={showClose ? "mt-4" : "mt-3"}>{children}</div>
       </div>
     </div>
   );

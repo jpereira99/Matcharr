@@ -1,6 +1,13 @@
-# ⚽ Matcharr
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="frontend/src/assets/brand/lockup-on-dark.png">
+    <img alt="Matcharr" src="frontend/src/assets/brand/lockup-on-light.png" width="420">
+  </picture>
+</p>
 
-[![CI](https://github.com/jpereira99/Matcharr/actions/workflows/ci.yml/badge.svg)](https://github.com/jpereira99/Matcharr/actions/workflows/ci.yml)
+<p align="center">
+  <a href="https://github.com/jpereira99/Matcharr/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/jpereira99/Matcharr/actions/workflows/ci.yml/badge.svg"></a>
+</p>
 
 **Matcharr** is a companion service for [Dispatcharr](https://github.com/Dispatcharr/Dispatcharr): it reads ESPN schedules, matches live stream titles to per-league patterns, and updates your team’s virtual Dispatcharr channel to the right stream when a game is in the routing window.
 
@@ -140,13 +147,11 @@ PYTHONPATH=backend python -m pytest backend/tests -q
 
 Environment variables use the prefix `**MA_**`. Values are read by the backend via `pydantic-settings`.
 
-
 | Variable           | Default                                         | Description                                                                                                                                         |
 | ------------------ | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `MA_DATA_DIR`      | `/app/data` (local dev: override e.g. `./data`) | Directory for SQLite and app data. Created if missing.                                                                                              |
 | `MA_DATABASE_NAME` | `matcharr.db`                                   | SQLite filename inside `MA_DATA_DIR`.                                                                                                               |
 | `MA_STATIC_DIR`    | unset                                           | If set to a directory containing the built UI (`index.html`, `assets/`), FastAPI serves the SPA and static assets. In Docker this is `/app/static`. |
-
 
 **Listen address and port** — Set these on **uvicorn** (or your process manager), not via the table above. The Docker image runs `uvicorn` with `--host 0.0.0.0` and `--port 8400`. Compose maps host port `8400` to the container by default.
 
@@ -157,7 +162,7 @@ If you still have an existing SQLite file named `streamroutarr.db` from an older
 ## API and Docs
 
 - **OpenAPI** — With the server running, interactive docs are at `/docs` (Swagger UI) and `/redoc` on the same origin as the app (for example `http://localhost:8400/docs` when using the default port).
-- **REST API** — All application routes are under the `**/api`** prefix (for example `/api/settings`, `/api/dashboard`).
+- **REST API** — All application routes are under the `**/api`\*\* prefix (for example `/api/settings`, `/api/dashboard`).
 
 ---
 
