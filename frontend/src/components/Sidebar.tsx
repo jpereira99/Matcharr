@@ -2,10 +2,10 @@ import { useSidebar } from "@/hooks/useSidebar";
 import { cn } from "@/lib/utils";
 import {
   Activity,
-  ChevronLeft,
-  ChevronRight,
   LayoutDashboard,
   Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
   Settings,
   Trophy,
   Users,
@@ -24,7 +24,14 @@ const links = [
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 
-function SidebarContent({ collapsed }: { collapsed: boolean }) {
+function SidebarContent({
+  collapsed,
+  onToggle,
+}: {
+  collapsed: boolean;
+  /** Desktop only: collapse/expand control in the bottom bar. */
+  onToggle?: () => void;
+}) {
   return (
     <>
       {/* Brand */}
@@ -76,8 +83,31 @@ function SidebarContent({ collapsed }: { collapsed: boolean }) {
       </nav>
 
       {/* Bottom */}
-      <div className="border-t border-(--color-border) p-2">
+      <div
+        className={cn(
+          "flex border-t border-(--color-border) p-2",
+          collapsed ? "flex-col items-center gap-0.5" : "items-center",
+        )}
+      >
         <ThemeToggle collapsed={collapsed} />
+        {onToggle && (
+          <button
+            type="button"
+            onClick={onToggle}
+            className={cn(
+              "flex cursor-pointer rounded-(--radius-md) p-2 text-(--color-muted) transition-colors hover:bg-(--color-surface-raised) hover:text-(--color-foreground)",
+              !collapsed && "ml-auto",
+            )}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {collapsed ? (
+              <PanelLeftOpen className="h-4 w-4" />
+            ) : (
+              <PanelLeftClose className="h-4 w-4" />
+            )}
+          </button>
+        )}
       </div>
     </>
   );
@@ -111,7 +141,7 @@ export function Sidebar() {
             onClick={() => setMobileOpen(false)}
             aria-label="Close menu"
           />
-          <aside className="relative z-10 flex h-full w-64 flex-col bg-(--color-sidebar)">
+          <aside className="relative z-10 flex h-full w-[214px] flex-col bg-(--color-sidebar)">
             <div className="flex items-center justify-end p-2">
               <button
                 type="button"
@@ -131,22 +161,11 @@ export function Sidebar() {
       <aside
         className={cn(
           "sticky top-0 hidden h-screen flex-col border-r border-(--color-border) bg-(--color-sidebar) transition-[width] duration-200 md:flex",
-          collapsed ? "w-16" : "w-[260px]",
+          // Expanded width = the brand lockup (h-6) plus the brand row's px-4.
+          collapsed ? "w-16" : "w-[214px]",
         )}
       >
-        <SidebarContent collapsed={collapsed} />
-        <button
-          type="button"
-          onClick={toggle}
-          className="absolute top-7 -right-3 z-20 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-(--color-border) bg-(--color-surface) text-(--color-muted) shadow-sm transition-colors hover:text-(--color-foreground)"
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
-          {collapsed ? (
-            <ChevronRight className="h-3 w-3" />
-          ) : (
-            <ChevronLeft className="h-3 w-3" />
-          )}
-        </button>
+        <SidebarContent collapsed={collapsed} onToggle={toggle} />
       </aside>
     </>
   );
