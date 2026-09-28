@@ -269,7 +269,7 @@ export type PreviewContext = {
 };
 
 export type PreviewResult =
-  | { kind: "skipped"; term: string }
+  | ({ kind: "skipped"; term: string } & SpanMatch)
   | { kind: "error"; message: string }
   | { kind: "nofit" }
   | ({ kind: "fit" } & SpanMatch)
@@ -300,11 +300,13 @@ export function evaluateStream(
   ctx: PreviewContext,
 ): PreviewResult {
   const t = title.trim();
-  const term = findSkipTerm(t, ctx.skipTerms);
-  if (term) return { kind: "skipped", term };
   if (!compiled.ok) return { kind: "error", message: compiled.error };
+  // Like candidates.rank_candidates: titles that don't fit the pattern are never
+  // looked at, so skip terms only apply to ones that do.
   const m = matchSpans(compiled, t);
   if (!m) return { kind: "nofit" };
+  const term = findSkipTerm(t, ctx.skipTerms);
+  if (term) return { kind: "skipped", term, ...m };
   const { home, away } = m.groups;
   if (!home || !away) return { kind: "fit", ...m };
 

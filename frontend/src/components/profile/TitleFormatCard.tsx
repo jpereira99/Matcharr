@@ -7,7 +7,6 @@ import {
   aliasFromHow,
   deriveTokens,
   exampleFromPattern,
-  matchSpans,
   patternFromTokens,
   setTokenType,
   type Compiled,
@@ -57,7 +56,7 @@ type Props = {
   /** Whether the stream pool is still loading or failed to load. */
   status: "loading" | "error" | "ready";
   error?: string | null;
-  /** How many pool titles fit the pattern, shown while editing as text. */
+  /** How many pool titles fit the pattern (skipped ones included), shown while editing as text. */
   poolFit?: { fits: number; total: number; skipped: number };
   pattern: string;
   compiled: Compiled;
@@ -112,17 +111,13 @@ function checkMessage(
 function pickDefaultExample(
   titles: string[],
   evaluate: (t: string) => PreviewResult,
-  compiled: Compiled,
 ): string | null {
   const kinds = titles.map((t) => evaluate(t).kind);
-  for (const kind of ["matched", "noteam", "fit"] as const) {
+  for (const kind of ["matched", "noteam", "fit", "skipped"] as const) {
     const i = kinds.indexOf(kind);
     if (i >= 0) return titles[i];
   }
-  const skipped = kinds.findIndex(
-    (k, i) => k === "skipped" && matchSpans(compiled, titles[i]),
-  );
-  return skipped >= 0 ? titles[skipped] : null;
+  return null;
 }
 
 export function TitleFormatCard({
@@ -154,9 +149,7 @@ export function TitleFormatCard({
   const hasExamples = status === "ready" && titles.length > 0;
   const autoExample = useMemo(
     () =>
-      hasExamples && compiled.ok
-        ? pickDefaultExample(titles, evaluate, compiled)
-        : null,
+      hasExamples && compiled.ok ? pickDefaultExample(titles, evaluate) : null,
     [hasExamples, titles, evaluate, compiled],
   );
   const pasted =
@@ -334,7 +327,7 @@ export function TitleFormatCard({
                   {" · "}
                   Fits{" "}
                   <span className="text-(--color-foreground)">
-                    {poolFit.fits} of {poolFit.total - poolFit.skipped}
+                    {poolFit.fits} of {poolFit.total}
                   </span>{" "}
                   streams in this pool
                   {poolFit.skipped > 0 && ` (${poolFit.skipped} skipped)`}

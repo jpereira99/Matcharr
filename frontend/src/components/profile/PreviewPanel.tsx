@@ -12,7 +12,8 @@ import { useMemo, useState } from "react";
 
 const MAX_ROWS = 200;
 
-type Group = "matched" | "skipped" | "other";
+/** "ignored" = doesn't fit the title format, so Matcharr never looks at it. */
+type Group = "matched" | "skipped" | "other" | "ignored";
 type Tone = "ok" | "warn" | "bad" | "muted";
 
 type Row = {
@@ -91,9 +92,9 @@ function toRows(items: PreviewItem[]): Row[] {
           ...base,
           badge: "No fit",
           variant: "muted",
-          status: "doesn't fit the title format",
+          status: "doesn't fit the title format, so Matcharr ignores it",
           strong: false,
-          group: "other",
+          group: "ignored",
           tone: "muted",
         };
       case "noteam":
@@ -133,18 +134,42 @@ function toRows(items: PreviewItem[]): Row[] {
 type Props = {
   items: PreviewItem[];
   gameCount: number;
+  /** Why no stream can be checked yet (no pattern, or it doesn't compile). */
+  formatIssue: string | null;
   loading: boolean;
   error: string | null;
 };
 
-export function PreviewPanel({ items, gameCount, loading, error }: Props) {
-  const [filter, setFilter] = useState<"all" | Group>("all");
-  const rows = useMemo(() => toRows(items), [items]);
+type Filter = "all" | Exclude<Group, "ignored">;
+
+export function PreviewPanel({
+  items,
+  gameCount,
+  formatIssue,
+  loading,
+  error,
+}: Props) {
+  const [filter, setFilter] = useState<Filter>("all");
+  const [showIgnored, setShowIgnored] = useState(false);
+  const allRows = useMemo(() => toRows(items), [items]);
+  // Only titles that fit the format reach the matcher; the rest are noise.
+  const rows = useMemo(
+    () => (formatIssue ? [] : allRows.filter((r) => r.group !== "ignored")),
+    [allRows, formatIssue],
+  );
+  const ignored = useMemo(
+    () => (formatIssue ? [] : allRows.filter((r) => r.group === "ignored")),
+    [allRows, formatIssue],
+  );
 
   const tone = (t: Tone) => rows.filter((r) => r.tone === t).length;
   const count = (g: Group) => rows.filter((r) => r.group === g).length;
   const visible =
-    filter === "all" ? rows : rows.filter((r) => r.group === filter);
+    filter === "all"
+      ? showIgnored
+        ? [...rows, ...ignored]
+        : rows
+      : rows.filter((r) => r.group === filter);
   const nOk = tone("ok");
   const nConflict = tone("warn");
 
@@ -167,7 +192,7 @@ export function PreviewPanel({ items, gameCount, loading, error }: Props) {
             )}
           </StatRow>
           <div className="ml-auto text-right text-xs text-(--color-muted)">
-            {rows.length} streams checked
+            {rows.length} of {allRows.length} streams fit the title format
             <br />
             against {gameCount} upcoming ESPN game{gameCount === 1 ? "" : "s"}
           </div>
@@ -182,7 +207,7 @@ export function PreviewPanel({ items, gameCount, loading, error }: Props) {
         />
         <Tabs
           value={filter}
-          onChange={(v) => setFilter(v as typeof filter)}
+          onChange={(v) => setFilter(v as Filter)}
           className="flex-wrap self-start"
           items={[
             { id: "all", label: `All ${rows.length}` },
@@ -209,9 +234,16 @@ export function PreviewPanel({ items, gameCount, loading, error }: Props) {
               <Skeleton className="h-4 w-40" />
             </div>
           ))
-        ) : visible.length === 0 ? (
+        ) : formatIssue ? (
+          <div className="flex items-start gap-2 px-5 py-6 text-xs text-(--color-muted)">
+            <CircleAlert className="mt-0.5 h-3.5 w-3.5 flex-none text-(--color-warning)" />
+            <span>{formatIssue}</span>
+          </div>
+        ) : visible.length === 0 && (filter !== "all" || !ignored.length) ? (
           <div className="px-5 py-6 text-xs text-(--color-muted)">
-            Nothing in this view.
+            {allRows.length === 0
+              ? "No streams in this pool."
+              : "Nothing in this view."}
           </div>
         ) : (
           <>
@@ -241,6 +273,21 @@ export function PreviewPanel({ items, gameCount, loading, error }: Props) {
               <div className="px-5 py-3 text-xs text-(--color-muted)">
                 Showing the first {MAX_ROWS} of {visible.length}. Narrow the
                 stream filters to see the rest.
+              </div>
+            )}
+            {filter === "all" && ignored.length > 0 && (
+              <div className="border-t border-(--color-border) px-5 py-3 text-xs text-(--color-muted)">
+                {rows.length === 0 && "No stream fits the title format. "}
+                {ignored.length} stream{ignored.length === 1 ? "" : "s"} in this
+                pool {ignored.length === 1 ? "doesn't" : "don't"} fit, so
+                Matcharr ignores {ignored.length === 1 ? "it" : "them"}.{" "}
+                <button
+                  type="button"
+                  onClick={() => setShowIgnored(!showIgnored)}
+                  className="cursor-pointer font-medium text-(--color-accent) hover:underline"
+                >
+                  {showIgnored ? "Hide them" : "Show them"}
+                </button>
               </div>
             )}
           </>
