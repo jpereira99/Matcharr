@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from app import __version__
 from app.config import ensure_data_dir, get_settings
 from app.database import get_db, init_db
 from app.routers import (
@@ -47,7 +48,7 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     settings_obj = get_settings()
-    app = FastAPI(title="Matcharr", lifespan=lifespan)
+    app = FastAPI(title="Matcharr", version=__version__, lifespan=lifespan)
 
     app.add_middleware(
         CORSMiddleware,

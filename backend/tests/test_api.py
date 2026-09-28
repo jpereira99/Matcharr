@@ -126,3 +126,16 @@ def test_manual_jobs(env, monkeypatch):
     r = client.post("/api/jobs/match-cycle").json()
     assert r["ok"] and r["message"].startswith("Completed")
     assert client.get("/api/health").json()["last_scan_at"]
+
+
+def test_version_matches_frontend(env):
+    import json
+    from pathlib import Path
+
+    from app import __version__
+
+    pkg = Path(__file__).resolve().parents[2] / "frontend" / "package.json"
+    assert json.loads(pkg.read_text())["version"] == __version__
+    client, _ = env
+    assert client.get("/api/health").json()["version"] == __version__
+    assert client.get("/openapi.json").json()["info"]["version"] == __version__

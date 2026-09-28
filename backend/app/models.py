@@ -166,6 +166,7 @@ class LogPage(BaseModel):
 
 
 class HealthOut(BaseModel):
+    version: str = ""
     database: bool = True
     dispatcharr_reachable: bool | None = None
     dispatcharr_latency_ms: int | None = None

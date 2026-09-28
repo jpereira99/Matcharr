@@ -82,6 +82,16 @@ function SidebarContent({
         ))}
       </nav>
 
+      <div
+        className={cn(
+          "pb-2 text-[10px] text-(--color-muted) tabular-nums",
+          collapsed ? "text-center" : "px-5",
+        )}
+        title={`Matcharr v${__APP_VERSION__}`}
+      >
+        v{__APP_VERSION__}
+      </div>
+
       {/* Bottom */}
       <div
         className={cn(

@@ -8,6 +8,7 @@ from typing import Any
 
 from fastapi import APIRouter
 
+from app import __version__
 from app.database import get_db, kv_get
 from app.models import AppSettings, DashboardOut, HealthOut
 from app.services.dispatcharr import DispatcharrClient
@@ -161,6 +162,7 @@ async def health() -> HealthOut:
     next_s, sched_running = get_scheduler_status()
     da_ok, latency_ms, checked_at = await _dispatcharr_health(settings)
     return HealthOut(
+        version=__version__,
         database=True,
         dispatcharr_reachable=da_ok,
         dispatcharr_latency_ms=latency_ms,
