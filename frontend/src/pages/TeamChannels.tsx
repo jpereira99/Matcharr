@@ -5,7 +5,6 @@ import { TeamLogo } from "@/components/TeamLogo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { OverflowMenu } from "@/components/ui/menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs } from "@/components/ui/tabs";
 import { Toggle } from "@/components/ui/toggle";
@@ -435,17 +434,15 @@ function TeamCard({
             onChange={onToggle}
             label={team.enabled ? "Turn routing off" : "Turn routing on"}
           />
-          <OverflowMenu
-            placement="up"
-            items={[
-              {
-                label: "Remove team…",
-                icon: Trash2,
-                onSelect: onRemove,
-                danger: true,
-              },
-            ]}
-          />
+          <button
+            type="button"
+            onClick={onRemove}
+            className="cursor-pointer rounded-(--radius-sm) p-1.5 text-(--color-muted) transition-colors duration-150 hover:bg-(--color-danger)/10 hover:text-(--color-danger)"
+            aria-label="Remove team"
+            title="Remove team"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
         </div>
       </div>
     </div>
