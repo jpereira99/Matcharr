@@ -1,6 +1,6 @@
 import { Breadcrumb } from "@/components/Breadcrumb";
 import { AddChip, Chip, SuggestionChip } from "@/components/ChipEditor";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { ConfirmDialog, removeTeamBody } from "@/components/ConfirmDialog";
 import { LeagueBadge } from "@/components/LeagueBadge";
 import { CandidateCard } from "@/components/team/CandidateCard";
 import { TeamLogo } from "@/components/TeamLogo";
@@ -362,10 +362,7 @@ export function TeamChannelDetailPage() {
         onCancel={() => setRemoveOpen(false)}
         onConfirm={() => remove.mutate()}
       >
-        Matcharr stops switching channel{" "}
-        {channelLabelFor(team.dispatcharr_channel_id)} for this team. The
-        channel in Dispatcharr stays as it is, and any overrides for its games
-        are removed.
+        {removeTeamBody(channelLabelFor(team.dispatcharr_channel_id))}
       </ConfirmDialog>
 
       <div

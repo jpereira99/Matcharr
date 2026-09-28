@@ -1,14 +1,18 @@
+import { ConfirmDialog, removeTeamBody } from "@/components/ConfirmDialog";
 import { BigStat, StackedBar, StatRow } from "@/components/StatSummary";
 import { AddTeamDialog } from "@/components/team/AddTeamDialog";
 import { TeamLogo } from "@/components/TeamLogo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { OverflowMenu } from "@/components/ui/menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs } from "@/components/ui/tabs";
+import { Toggle } from "@/components/ui/toggle";
 import { api } from "@/lib/api";
 import { fmtAgo, fmtDay, fmtTime } from "@/lib/date";
 import {
+  channelLabel,
   channelNumber,
   leagueLabel,
   teamStatusBadge,
@@ -21,10 +25,10 @@ import type {
   TeamStatusItem,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { useQuery } from "@tanstack/react-query";
-import { Link2, Plus, TriangleAlert, Users } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link2, Plus, Trash2, TriangleAlert, Users } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 const needsLook = (s?: TeamStatusItem) =>
   !!s &&
@@ -50,6 +54,38 @@ export function TeamChannelsPage() {
   const [league, setLeague] = useState("all");
   const [attentionOnly, setAttentionOnly] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [removeId, setRemoveId] = useState<number | null>(null);
+
+  const qc = useQueryClient();
+  const optimistic = async (fn: (list: TeamChannel[]) => TeamChannel[]) => {
+    await qc.cancelQueries({ queryKey: ["team-channels"] });
+    const prev = qc.getQueryData<TeamChannel[]>(["team-channels"]);
+    qc.setQueryData<TeamChannel[]>(["team-channels"], (l) => l && fn(l));
+    return { prev };
+  };
+  const settle = {
+    onError: (_e: unknown, _v: unknown, ctx?: { prev?: TeamChannel[] }) =>
+      qc.setQueryData(["team-channels"], ctx?.prev),
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: ["team-channels"] });
+      void qc.invalidateQueries({ queryKey: ["team-status"] });
+      void qc.invalidateQueries({ queryKey: ["profiles"] });
+    },
+  };
+  const toggle = useMutation({
+    mutationFn: ({ id, enabled }: { id: number; enabled: boolean }) =>
+      api.updateTeamChannel(id, { enabled }),
+    onMutate: ({ id, enabled }) =>
+      optimistic((list) =>
+        list.map((t) => (t.id === id ? { ...t, enabled } : t)),
+      ),
+    ...settle,
+  });
+  const remove = useMutation({
+    mutationFn: (id: number) => api.deleteTeamChannel(id),
+    onMutate: (id) => optimistic((list) => list.filter((t) => t.id !== id)),
+    ...settle,
+  });
 
   const teams = useMemo(() => teamsQ.data ?? [], [teamsQ.data]);
   const profileMap = useMemo(
@@ -85,6 +121,11 @@ export function TeamChannelsPage() {
   const nOverride = count("override");
   const nWaiting = count("not_listed");
   const firstError = active.find((s) => s.status === "error")?.error;
+
+  const toRemove = teams.find((t) => t.id === removeId);
+  const removeChannel = toRemove
+    ? channelMap.get(toRemove.dispatcharr_channel_id)
+    : undefined;
 
   const shown = teams.filter(
     (t) =>
@@ -246,12 +287,32 @@ export function TeamChannelsPage() {
                   status={statusMap.get(t.id)}
                   statusLoading={loadingStatus}
                   channel={channelMap.get(t.dispatcharr_channel_id)}
+                  onToggle={(enabled) => toggle.mutate({ id: t.id, enabled })}
+                  onRemove={() => setRemoveId(t.id)}
                 />
               ))}
             </div>
           )}
         </>
       )}
+
+      <ConfirmDialog
+        open={!!toRemove}
+        title={`Remove ${toRemove?.team_name ?? "team"}?`}
+        confirmLabel="Remove team"
+        pending={remove.isPending}
+        onCancel={() => setRemoveId(null)}
+        onConfirm={() => {
+          if (toRemove) remove.mutate(toRemove.id);
+          setRemoveId(null);
+        }}
+      >
+        {removeTeamBody(
+          removeChannel
+            ? channelLabel(removeChannel)
+            : `#${toRemove?.dispatcharr_channel_id ?? ""}`,
+        )}
+      </ConfirmDialog>
 
       <AddTeamDialog
         open={adding}
@@ -269,13 +330,19 @@ function TeamCard({
   status,
   statusLoading,
   channel,
+  onToggle,
+  onRemove,
 }: {
   team: TeamChannel;
   profile?: LeagueProfile;
   status?: TeamStatusItem;
   statusLoading: boolean;
   channel?: DispatcharrChannel;
+  onToggle: (enabled: boolean) => void;
+  onRemove: () => void;
 }) {
+  const navigate = useNavigate();
+  const open = () => navigate(`/teams/${team.id}`);
   const league = profile?.espn_league ?? "";
   const enabled = team.enabled && (profile?.enabled ?? true);
   const badge = status
@@ -286,10 +353,15 @@ function TeamCard({
   const next = status?.next_game;
 
   return (
-    <Link
-      to={`/teams/${team.id}`}
+    <div
+      role="link"
+      tabIndex={0}
+      onClick={open}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && e.target === e.currentTarget) open();
+      }}
       className={cn(
-        "flex flex-col gap-3.5 rounded-(--radius-lg) border border-(--color-border) bg-(--color-surface) px-5 py-[18px] text-(--color-foreground) shadow-(--shadow-card) transition-all duration-150 hover:border-(--color-border-strong) hover:shadow-(--shadow-card-hover)",
+        "flex cursor-pointer flex-col gap-3.5 rounded-(--radius-lg) border border-(--color-border) bg-(--color-surface) px-5 py-[18px] text-(--color-foreground) shadow-(--shadow-card) transition-all duration-150 hover:border-(--color-border-strong) hover:shadow-(--shadow-card-hover)",
         !enabled && "opacity-50",
       )}
     >
@@ -345,6 +417,37 @@ function TeamCard({
           </span>
         )}
       </div>
-    </Link>
+      <div className="mt-auto flex items-center gap-2.5 border-t border-(--color-border) pt-3">
+        <span className="min-w-0 truncate text-xs text-(--color-muted)">
+          {profile
+            ? profile.enabled
+              ? profile.name
+              : `${profile.name} is off`
+            : "No league profile"}
+        </span>
+        <div
+          className="ml-auto flex flex-none items-center gap-1"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
+          <Toggle
+            checked={team.enabled}
+            onChange={onToggle}
+            label={team.enabled ? "Turn routing off" : "Turn routing on"}
+          />
+          <OverflowMenu
+            placement="up"
+            items={[
+              {
+                label: "Remove team…",
+                icon: Trash2,
+                onSelect: onRemove,
+                danger: true,
+              },
+            ]}
+          />
+        </div>
+      </div>
+    </div>
   );
 }

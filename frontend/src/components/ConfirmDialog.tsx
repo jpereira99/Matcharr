@@ -41,6 +41,10 @@ export function ConfirmDialog({
   );
 }
 
+export function removeTeamBody(channel: string) {
+  return `Matcharr stops switching channel ${channel} for this team. The channel in Dispatcharr stays as it is, and any overrides for its games are removed.`;
+}
+
 export function deleteProfileBody(teamCount: number) {
   return teamCount
     ? `${teamCount} team channel${teamCount === 1 ? "" : "s"} use${teamCount === 1 ? "s" : ""} this profile and will stop switching. Their channels in Dispatcharr stay as they are.`

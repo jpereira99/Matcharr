@@ -33,6 +33,7 @@ import type {
   LeagueProfile,
   LeagueProfileInput,
 } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import {
   keepPreviousData,
   useMutation,
@@ -213,9 +214,7 @@ function ProfileEditor({ profile }: { profile: LeagueProfile | null }) {
   const poolFit = useMemo(() => {
     const kinds = items.map((i) => i.result.kind);
     return {
-      fits: kinds.filter(
-        (k) => k === "matched" || k === "noteam" || k === "fit",
-      ).length,
+      fits: kinds.filter((k) => k !== "nofit" && k !== "error").length,
       skipped: kinds.filter((k) => k === "skipped").length,
       total: kinds.length,
     };
@@ -342,43 +341,24 @@ function ProfileEditor({ profile }: { profile: LeagueProfile | null }) {
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {dirty && (
-            <span className="mr-1 text-xs text-(--color-muted)">
-              Unsaved changes
-            </span>
-          )}
-          <div
-            className="mr-2 flex items-center gap-2"
-            title={
-              savedLive
-                ? "Takes effect right away"
-                : "Saved with the rest of the profile"
-            }
-          >
-            <span className="text-xs text-(--color-muted)">
-              {form.enabled ? "On" : "Off"}
-            </span>
-            <Toggle
-              checked={form.enabled}
-              onChange={setEnabled}
-              disabled={toggleEnabled.isPending}
-              label={form.enabled ? "Turn profile off" : "Turn profile on"}
-            />
-          </div>
-          <Button
-            variant="ghost"
-            onClick={() => {
-              save.reset();
-              if (dirty) setForm(saved);
-              else navigate("/profiles");
-            }}
-          >
-            Cancel
-          </Button>
-          <Button onClick={() => save.mutate(form)} disabled={!canSave}>
-            {save.isPending ? "Saving..." : "Save Changes"}
-          </Button>
+        {/* Same pair as the profile card: these act right away, unlike Save. */}
+        <div
+          className="flex items-center gap-2.5"
+          title={
+            savedLive
+              ? "Takes effect right away"
+              : "Saved with the rest of the profile"
+          }
+        >
+          <span className="text-xs text-(--color-muted)">
+            {form.enabled ? "Routing on" : "Routing off"}
+          </span>
+          <Toggle
+            checked={form.enabled}
+            onChange={setEnabled}
+            disabled={toggleEnabled.isPending}
+            label={form.enabled ? "Turn profile off" : "Turn profile on"}
+          />
           {profile && (
             <OverflowMenu
               items={[
@@ -400,9 +380,9 @@ function ProfileEditor({ profile }: { profile: LeagueProfile | null }) {
         </div>
       </header>
 
-      {(save.error || toggleEnabled.error || duplicate.error) && (
+      {(toggleEnabled.error || duplicate.error) && (
         <p className="-mt-3 text-right text-xs text-(--color-danger)">
-          {(save.error ?? toggleEnabled.error ?? duplicate.error)?.message}
+          {(toggleEnabled.error ?? duplicate.error)?.message}
         </p>
       )}
 
@@ -622,6 +602,46 @@ function ProfileEditor({ profile }: { profile: LeagueProfile | null }) {
               </p>
             )}
           </SettingsCard>
+          {(dirty || !profile) && (
+            <div className="sticky bottom-6 z-10 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-(--radius-lg) border border-(--color-border-strong) bg-(--color-surface-raised) py-2 pr-2 pl-4 shadow-(--shadow-dialog)">
+              <span
+                className={cn(
+                  "text-xs",
+                  save.error ? "text-(--color-danger)" : "text-(--color-muted)",
+                )}
+              >
+                {save.error
+                  ? save.error.message
+                  : !profile && !dirty
+                    ? "Name it and tag a title format to create it"
+                    : "Unsaved changes"}
+              </span>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    save.reset();
+                    if (dirty) setForm(saved);
+                    else navigate("/profiles");
+                  }}
+                >
+                  {dirty ? "Discard" : "Cancel"}
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => save.mutate(form)}
+                  disabled={!canSave}
+                >
+                  {save.isPending
+                    ? "Saving..."
+                    : profile
+                      ? "Save changes"
+                      : "Create profile"}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="sticky top-6 flex max-h-[calc(100vh-3rem)] min-w-0 flex-col gap-4">
@@ -634,6 +654,13 @@ function ProfileEditor({ profile }: { profile: LeagueProfile | null }) {
           <PreviewPanel
             items={items}
             gameCount={check?.games.length ?? 0}
+            formatIssue={
+              !form.stream_pattern.trim()
+                ? "Tag a title format to see which streams Matcharr will look at."
+                : compiled.ok
+                  ? null
+                  : compiled.error
+            }
             loading={checkQ.isLoading}
             error={streamError}
           />
